@@ -31,6 +31,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         var playerCount = VRCPlayerApi.GetPlayerCount();
         VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
         VRCPlayerApi.GetPlayers(players);
+        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
         int i;
         for (i = 0; i < playerCount; i++)
         {

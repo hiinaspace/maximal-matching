@@ -181,7 +181,7 @@ public class MatchingTracker : UdonSharpBehaviour
 
             for (int j = 0; j < playerCount; j++)
             {
-                bool wasMatchedWith = (bitmap[j / 8] >> (7 - j % 8)) == 1;
+                bool wasMatchedWith = ((bitmap[j / 8] >> (7 - j % 8)) & 1) == 1;
                 globalState[n * 80 + j] = wasMatchedWith;
             }
 
@@ -243,7 +243,7 @@ public class MatchingTracker : UdonSharpBehaviour
         }
         for (int i = 0; i < 15; i++)
         {
-            s += "                "; // 16 spaces
+            s += "\n                "; // 16 spaces
             for (int j = 0; j < playerCount; j++)
             {
                 s += names[j][i];
@@ -335,26 +335,19 @@ public class MatchingTracker : UdonSharpBehaviour
         // 80 bits (79 other players at max)
         byte[] matchingBitmap = new byte[10];
 
-        int lastPlayerId = -1;
         for (int i = 0; i < playerCount; i++)
         {
             var player = players[i];
-            if (player.playerId <= lastPlayerId)
-            {
-                Log("ASSUMPTION VIOLATED: you'll need to sort GetPlayers by playerId after all");
-            }
-            lastPlayerId = player.playerId;
-
             bool matchedWithPlayer = GetLocallyMatchedWith(player);
             if (matchedWithPlayer)
             {
-                matchingBitmap[i] |= (byte)(1 << (7 - i % 8));
+                matchingBitmap[i / 8] |= (byte)(1 << (7 - i % 8));
             }
         }
         localPlayerState.matchingState = System.Convert.ToBase64String(matchingBitmap);
     }
 
-    private void SortPlayersByPlayerId(VRCPlayerApi[] players, int playerCount)
+    public void SortPlayersByPlayerId(VRCPlayerApi[] players, int playerCount)
     {
         int i, j;
         VRCPlayerApi p;
