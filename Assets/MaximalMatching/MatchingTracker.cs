@@ -48,12 +48,14 @@ public class MatchingTracker : UdonSharpBehaviour
     // I'm not sure how fast udon 'settles' synced variables when first joining
     // the world vs when UdonBehaviors start to run, so wait a bit on join
     // before trying to grab ownership.
-    private float initialOwnershipDelay = 3f;
+    private float initialOwnershipDelay = 10f;
 
     private float broadcastCooldown = -1;
+
     void Start()
     {
         playerStates = PlayerStateRoot.GetComponentsInChildren<MatchingTrackerPlayerState>(includeInactive: true);
+        Log($"Start MatchingTracker");
     }
 
     public bool GetLocallyMatchedWith(VRCPlayerApi other)
@@ -83,14 +85,15 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private bool lookup(string key, string[] keys, bool[] values)
     {
-        var i = linearProbe(key, keys, values);
+        var i = linearProbe(key, keys);
         var k = keys[i];
         return k == null ? false : values[i];
     }
 
-    private int linearProbe(string key, string[] keys, bool[] values)
+    private int linearProbe(string key, string[] keys)
     {
-        var init = key.GetHashCode() % LOCAL_STATE_SIZE;
+        // XXX negative modulus happens sometimes. might be biased but good enough for here.
+        var init = Mathf.Abs(key.GetHashCode()) % LOCAL_STATE_SIZE;
         var i = init;
         var k = keys[i];
         while (k != null && k != key)
@@ -109,7 +112,7 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private bool set(string key, bool value, string[] keys, bool[] values)
     {
-        var i = linearProbe(key, keys, values);
+        var i = linearProbe(key, keys);
         var newKey = keys[i] == null;
         keys[i] = key;
         values[i] = value;
@@ -192,8 +195,12 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private float debugStateCooldown = -1;
 
+    // crash watchdog
+    public float lastUpdate;
+
     private void Update()
     {
+        lastUpdate = Time.time;
         if (Networking.LocalPlayer == null) return;
         JuggleActiveGameobjects();
         MaintainLocalOwnership();
@@ -248,7 +255,6 @@ public class MatchingTracker : UdonSharpBehaviour
             {
                 s += names[j][i];
             }
-            s += "\n";
         }
         FullStateDisplay.text = s;
     }
@@ -372,7 +378,15 @@ public class MatchingTracker : UdonSharpBehaviour
         // I'm hoping that there's enough frame jitter that we don't get into a state where
         // two players will never have the same set of gameobjects active at the same time, thus
         // some states never sync. If that's the case will need to randomize more.
-        playerStates[enabledCursor].gameObject.SetActive(false);
+
+        // since the "death run" problem only occurs on owned gameobjects, keep any
+        // remotely-owned gameobjects alive as well; if we become master and a bunch of gameobjects
+        // get dumped on us, we'll hopefully disable them pretty quick.
+        var toDisable = playerStates[enabledCursor];
+        if (Networking.IsOwner(toDisable.gameObject))
+        {
+            playerStates[enabledCursor].gameObject.SetActive(false);
+        }
         playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length].gameObject.SetActive(true);
         enabledCursor = (enabledCursor + 1) % playerStates.Length;
         // keep local player state active though
@@ -384,7 +398,7 @@ public class MatchingTracker : UdonSharpBehaviour
 
     public void Log(string text)
     {
-        if (DebugLogText.text.Length > 2000)
+        if (DebugLogText.text.Split('\n').Length > 30)
         {
             // trim
             DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);

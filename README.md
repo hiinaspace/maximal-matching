@@ -67,19 +67,19 @@ The MatchingTrackerUi prefab displays the full player matching graph as a
 canvas UI, for debugging or as a checklist, as well as functions for a player
 to locally clear their matching state if desired.
 
-### MaximalMatcher (TODO)
+### AutoMatcher
 
-The MaximalMatcher prefab implements the automatic part of the system.
+The AutoMatcher prefab implements the automatic part of the system.
 
 The behavior waits for players to enter the 'Lobby' collider, and begins a
 short countdown once there are enough players to match. Once the countdown
-finishes, the prefab calculates the [Maximal Cardinality Matching][0] from the
-global MatchingTracker state (filtered to players currently within the Lobby),
-and broadcasts that matching as a synced string of up to 80 7-bit player
-ordinals. The behavior then teleports the local player into a currently
+finishes, the prefab calculates the [Maximal Cardinality Matching][0] (or at
+least a greedy matching) from the global MatchingTracker state (filtered to
+players currently within the Lobby), and broadcasts that matching as a synced
+string. The behavior then teleports the local player into a currently
 unoccupied 'private zone' according to the matching, and marks each player as
-having been matched with each other. An optional local timer within each private
-zone teleports the player back outside after the time.
+having been matched with each other. The PrivateRoomTimer behavior then
+teleports the players back to spawn after a delay.
 
 Players outside the lobby will not be automatically matched/teleported, so they
 can take breaks from the matching if afk or otherwise. Additionally, players
@@ -88,7 +88,7 @@ coordinate entry times.
 
 Since the MatchingTracker tracks each player's local perception of whether they
 have been matched with other players by displayName, the "has been matched"
-graph is directed. The MaximalMatcher will only match players who both locally
+graph is directed. The AutoMatcher will only match players who both locally
 indicate they haven't been matched with each other. That way, a player who
 rejoins the instance with a clean slate will still avoid being matched with
 players they were matched with before (in the same instance), because those
@@ -98,6 +98,12 @@ get rematched with people by continually rejoining. If both players agree they
 want to be rematched they can both clear their matching state locally.
 
 [0]: https://en.wikipedia.org/wiki/Maximum_cardinality_matching
+
+### OccupancyTracker
+
+A simple behavior to track player occupancy using a hash set and vrchat's
+player trigger enter/leave callbacks, used by the AutoMatcher for lobby and
+room occupancy.
 
 ## Prereqs
 
