@@ -59,6 +59,8 @@ public class AutoMatcher : UdonSharpBehaviour
     public float lastUpdate;
 
 
+    private float debugStateCooldown = -1;
+
     void Start()
     {
         privateRooms = PrivateZoneRoot.GetComponentsInChildren<OccupantTracker>();
@@ -114,12 +116,14 @@ public class AutoMatcher : UdonSharpBehaviour
         }
 
         // debug state
+        if ((debugStateCooldown -= Time.deltaTime) > 0) return;
+        debugStateCooldown = 1f;
         int[] privateRoomOccupancy = new int[privateRooms.Length];
         for (int i = 0; i < privateRooms.Length; i++)
         {
             privateRoomOccupancy[i] = privateRooms[i].occupancy;
         }
-        DebugStateText.text = $"{System.DateTime.Now} local master?={Networking.IsMaster}\n" +
+        DebugStateText.text = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster}\n" +
             $"lastLobbyCheck={lastLobbyCheck} lobbyReady={lobbyReady}\n" +
             $"lobbyStartCountdown={lobbyStartCountdown} (since lobby became ready)\n" +
             $"lobbyQuiescenceCountdown={lobbyQuiescenceCountdown} (since last player entered lobby)\n" +
@@ -127,11 +131,12 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"matchingState0={matchingState0}\n" +
             $"lastSeenState0={lastSeenState0}\n" +
-            $"lastSeenServerTimeMillis={lastSeenServerTimeMillis} currentServerTimeMillis={Networking.GetServerTimeInMilliseconds()}\n" +
+            $"lastSeenServerTimeMillis={lastSeenServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastPlayerLeaveServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
             $"lastSeenRoomAssignment={join(lastSeenRoomAssignment)}\n" +
             $"privateRoomOccupancy={join(privateRoomOccupancy)}";
     }
+
 
     // XXX string.Join doesn't work in udon
     private string join(int[] a)
@@ -249,6 +254,8 @@ public class AutoMatcher : UdonSharpBehaviour
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
         var eligibleCount = eligiblePlayers.Length;
+        Log($"{eligibleCount} players eligible for matching.");
+
         // have to get the full player list for ordinals.
         var playerCount = VRCPlayerApi.GetPlayerCount();
         VRCPlayerApi[] players = new VRCPlayerApi[playerCount];

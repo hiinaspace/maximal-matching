@@ -45,11 +45,6 @@ public class MatchingTracker : UdonSharpBehaviour
     private float takeOwnershipAttemptCooldown = -1;
     private float releaseOwnershipAttemptCooldown = -1;
 
-    // I'm not sure how fast udon 'settles' synced variables when first joining
-    // the world vs when UdonBehaviors start to run, so wait a bit on join
-    // before trying to grab ownership.
-    private float initialOwnershipDelay = 10f;
-
     private float broadcastCooldown = -1;
 
     void Start()
@@ -198,10 +193,26 @@ public class MatchingTracker : UdonSharpBehaviour
     // crash watchdog
     public float lastUpdate;
 
+    // periodically try to initialize. While it'd be nice to run this in Start()
+    // I'm not sure if Networking.IsMaster will return true in Start() even if you are the master
+    // so redo it just to be sure.
+    private float lastInitializeCheck = 0;
+    private void InitializePlayerStates()
+    {
+        if (!Networking.IsMaster) return;
+        if ((lastInitializeCheck -= Time.deltaTime) > 0) return;
+        lastInitializeCheck = 10f;
+        foreach (var playerState in playerStates)
+        {
+            if (!playerState.IsInitialized()) playerState.Initialize();
+        }
+    }
+
     private void Update()
     {
         lastUpdate = Time.time;
         if (Networking.LocalPlayer == null) return;
+        InitializePlayerStates();
         JuggleActiveGameobjects();
         MaintainLocalOwnership();
         BroadcastLocalState();
@@ -212,7 +223,8 @@ public class MatchingTracker : UdonSharpBehaviour
     {
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
-        string s = $"{System.DateTime.Now} broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\nplayerState=";
+        string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
+            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\nplayerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
             MatchingTrackerPlayerState playerState = playerStates[i];
@@ -262,9 +274,6 @@ public class MatchingTracker : UdonSharpBehaviour
     // maintain ownership of exactly one of the MatchingTrackerPlayerState gameobjects
     private void MaintainLocalOwnership()
     {
-        // wait for network to settle
-        if ((initialOwnershipDelay -= Time.deltaTime) > 0) return;
-
         var localPlayerId = Networking.LocalPlayer.playerId;
         if (localPlayerState == null)
         {
@@ -275,6 +284,9 @@ public class MatchingTracker : UdonSharpBehaviour
                 Log($"no owned MatchingTrackerPlayerState, scanning for an unowned one");
                 foreach (var playerState in playerStates)
                 {
+                    // skip uninitialized states
+                    if (!playerState.IsInitialized()) continue;
+
                     var owner = playerState.GetExplicitOwner();
                     if (owner == null)
                     {
@@ -318,7 +330,6 @@ public class MatchingTracker : UdonSharpBehaviour
                                 Log($"uhoh, found extra owned {playerState.name}, releasing.");
                                 // release explicit ownership
                                 playerState.ownerId = -1;
-                                break;
                             }
                             foundOne = true;
                         }
@@ -382,18 +393,14 @@ public class MatchingTracker : UdonSharpBehaviour
         // since the "death run" problem only occurs on owned gameobjects, keep any
         // remotely-owned gameobjects alive as well; if we become master and a bunch of gameobjects
         // get dumped on us, we'll hopefully disable them pretty quick.
+        // also keep the local player state enabled locally, so we can push updates to it.
         var toDisable = playerStates[enabledCursor];
-        if (Networking.IsOwner(toDisable.gameObject))
+        if (toDisable != localPlayerState && Networking.IsOwner(toDisable.gameObject))
         {
-            playerStates[enabledCursor].gameObject.SetActive(false);
+            toDisable.gameObject.SetActive(false);
         }
         playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length].gameObject.SetActive(true);
         enabledCursor = (enabledCursor + 1) % playerStates.Length;
-        // keep local player state active though
-        if (localPlayerState != null)
-        {
-            localPlayerState.gameObject.SetActive(true);
-        }
     }
 
     public void Log(string text)
