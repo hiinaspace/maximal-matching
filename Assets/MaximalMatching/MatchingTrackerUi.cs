@@ -35,15 +35,21 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         int i;
         for (i = 0; i < playerCount; i++)
         {
+            VRCPlayerApi p = players[i];
+            // skip ourselves
+            if (Networking.LocalPlayer == p)
+            {
+                continue;
+            }
             toggles[i].gameObject.SetActive(true);
-            texts[i].text = players[i].displayName;
-            var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(players[i]);
-            if (activePlayerLastUpdate[i] == players[i].displayName)
+            texts[i].text = p.displayName;
+            var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(p);
+            if (activePlayerLastUpdate[i] == p.displayName)
             {
                 // if player changed state in ui (doesn't match our internal state)
                 if (toggles[i].isOn != lastSeenToggle[i])
                 {
-                    MatchingTracker.SetLocallyMatchedWith(players[i], toggles[i].isOn);
+                    MatchingTracker.SetLocallyMatchedWith(p, toggles[i].isOn);
                 } else
                 {
                     // set UI from tracker state
@@ -54,7 +60,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             } else
             {
                 // wasn't the same player before
-                activePlayerLastUpdate[i] = players[i].displayName;
+                activePlayerLastUpdate[i] = p.displayName;
                 // set the UI state ignoring what it was
                 toggles[i].isOn = wasMatchedWith;
                 lastSeenToggle[i] = wasMatchedWith;

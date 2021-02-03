@@ -8,6 +8,7 @@ public class AutoMatcher : UdonSharpBehaviour
 {
     public UnityEngine.UI.Text DebugLogText;
     public UnityEngine.UI.Text DebugStateText;
+    public UnityEngine.UI.Text FullStateDisplay;
 
     public MatchingTracker MatchingTracker;
     public OccupantTracker LobbyZone;
@@ -131,12 +132,63 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"matchingState0={matchingState0}\n" +
             $"lastSeenState0={lastSeenState0}\n" +
-            $"lastSeenServerTimeMillis={lastSeenServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastPlayerLeaveServerTimeMillis}\n" +
+            $"lastSeenServerTimeMillis={lastSeenServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
             $"lastSeenRoomAssignment={join(lastSeenRoomAssignment)}\n" +
             $"privateRoomOccupancy={join(privateRoomOccupancy)}";
-    }
 
+        if (!MatchingTracker.started) return;
+        var count = LobbyZone.occupancy;
+        if (count == 0 )
+        {
+            FullStateDisplay.text = "0 players in lobby.";
+            return;
+        }
+
+        var matchingObject = CalculateMatching(LobbyZone.GetOccupants());
+        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
+        int[] matching = (int[])matchingObject[1];
+        int matchCount = (int)matchingObject[2];
+        int[] rooms = (int[])matchingObject[3];
+        bool[] originalUgraph = (bool[])matchingObject[4];
+        var s = $"current potential matching:\n";
+        s += $"eligiblePlayerOrdinals={join(eligiblePlayerOrdinals)}\n";
+        s += $"matchCount={matchCount}\n";
+        s += $"matching={join(matching)}\n";
+        s += $"rooms={join(rooms)}\n";
+        s += $"originalUgraph:\n\n";
+        // TODO extract to function
+        var playerCount = VRCPlayerApi.GetPlayerCount();
+        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
+        VRCPlayerApi.GetPlayers(players);
+        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        string[] names = new string[playerCount];
+
+        for (int i = 0; i < count; i++)
+        {
+            var ordinal = eligiblePlayerOrdinals[i];
+            names[i] = players[ordinal].displayName.PadRight(15).Substring(0, 15);
+            s += $"{players[ordinal].displayName.PadLeft(15).Substring(0, 15)} ";
+
+            for (int j = 0; j < i; j++) s += " ";
+
+            for (int j = i + 1; j < count; j++)
+            {
+                s += originalUgraph[i * 80 + j] ? "O" : ".";
+            }
+            s += "\n";
+        }
+        for (int i = 0; i < 15; i++)
+        {
+            s += "\n                "; // 16 spaces
+            for (int j = 0; j < count; j++)
+            {
+                s += names[j][i];
+            }
+        }
+
+        FullStateDisplay.text = s;
+    }
 
     // XXX string.Join doesn't work in udon
     private string join(int[] a)
@@ -223,8 +275,8 @@ public class AutoMatcher : UdonSharpBehaviour
                 MatchingTracker.SetLocallyMatchedWith(
                     players[matching[i*2] == myOrdinal ? matching[i*2 + 1] : matching[i*2]], true);
 
-                // TODO could have better teleport locations whether you're first/second in the matching
-                Networking.LocalPlayer.TeleportTo(p.transform.position, p.transform.rotation);
+                Vector3 adjust = matching[i * 2] == myOrdinal ? Vector3.forward : Vector3.back;
+                Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, p.transform.rotation);
                 PrivateRoomTimer.currentRoom = p;
                 PrivateRoomTimer.StartCountdown(PrivateRoomTime);
                 // teleport timer to location too as visual.
@@ -252,6 +304,17 @@ public class AutoMatcher : UdonSharpBehaviour
     }
 
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
+    {
+        var matchingObject = CalculateMatching(eligiblePlayers);
+        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
+        int[] matching = (int[])matchingObject[1];
+        int matchCount = (int)matchingObject[2];
+        int[] rooms = (int[])matchingObject[3];
+
+        SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, rooms);
+    }
+
+    private object[] CalculateMatching(VRCPlayerApi[] eligiblePlayers)
     {
         var eligibleCount = eligiblePlayers.Length;
         Log($"{eligibleCount} players eligible for matching.");
@@ -289,6 +352,8 @@ public class AutoMatcher : UdonSharpBehaviour
         // player forces people to rematch with them by clearing their local
         // state/leaving and rejoining the instance.
         var ugraph = new bool[eligibleCount * eligibleCount];
+        // since ugraph is mutated in place, keep a copy for debugging
+        var originalUgraph = new bool[eligibleCount * eligibleCount];
         for (int i = 0; i < eligibleCount; i++)
         {
             int p1 = eligiblePlayerOrdinals[i];
@@ -300,6 +365,8 @@ public class AutoMatcher : UdonSharpBehaviour
                 ugraph[i * eligibleCount + j] =
                     // if both player says they haven't been matched
                     !global[p1 * 80 + p2] && !global[p2 * 80 + p1];
+
+                originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
             }
         }
         Log($"matching ugraph:\n{mkugraph(ugraph, eligibleCount)}");
@@ -324,7 +391,12 @@ public class AutoMatcher : UdonSharpBehaviour
 
         Log($"calculated {matchCount} matchings: {join(matching)}, rooms: {join(rooms)}");
 
-        // serialize
+        // such is udon
+        return new object[] { eligiblePlayerOrdinals, matching, matchCount, rooms, originalUgraph };
+    }
+
+    private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount, int[] rooms)
+    {
         int n = 0;
         byte[] buf = new byte[4 + 1 + matchCount * 3];
         // this is actually some arbitrary value, not even necessarily positive, but it is
@@ -332,14 +404,14 @@ public class AutoMatcher : UdonSharpBehaviour
         var time = Networking.GetServerTimeInMilliseconds();
         buf[n++] = (byte)((time >> 24) & 0xFF);
         buf[n++] = (byte)((time >> 16) & 0xFF);
-        buf[n++] = (byte)((time >> 8)  & 0xFF);
-        buf[n++] = (byte)(time         & 0xFF);
+        buf[n++] = (byte)((time >> 8) & 0xFF);
+        buf[n++] = (byte)(time & 0xFF);
         buf[n++] = (byte)matchCount;
         for (int i = 0; i < matchCount; i++)
         {
             // turn the matches back into full player ordinals
-            buf[n++] = (byte)eligiblePlayerOrdinals[matching[i*2]];
-            buf[n++] = (byte)eligiblePlayerOrdinals[matching[i*2+1]];
+            buf[n++] = (byte)eligiblePlayerOrdinals[matching[i * 2]];
+            buf[n++] = (byte)eligiblePlayerOrdinals[matching[i * 2 + 1]];
             buf[n++] = (byte)rooms[i];
         }
         var frame = System.Convert.ToBase64String(buf);

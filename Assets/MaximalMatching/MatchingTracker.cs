@@ -47,10 +47,13 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private float broadcastCooldown = -1;
 
+    public bool started = false;
+
     void Start()
     {
         playerStates = PlayerStateRoot.GetComponentsInChildren<MatchingTrackerPlayerState>(includeInactive: true);
         Log($"Start MatchingTracker");
+        started = true;
     }
 
     public bool GetLocallyMatchedWith(VRCPlayerApi other)
@@ -256,7 +259,7 @@ public class MatchingTracker : UdonSharpBehaviour
             s += $"{players[i].displayName.PadLeft(15).Substring(0, 15)} ";
             for (int j = 0; j < playerCount; j++)
             {
-                s += globalState[i * 80 + j] ? "O" : ".";
+                s += i == j ? "\\" : globalState[i * 80 + j] ? "O" : ".";
             }
             s += "\n";
         }

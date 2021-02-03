@@ -97,4 +97,15 @@ public class OccupantTracker : UdonSharpBehaviour
         }
         if (player == Networking.LocalPlayer) localPlayerOccupying = false;
     }
+
+    // if a player leaves while in the zone, they don't trigger exit.
+    public override void OnPlayerLeft(VRCPlayerApi player)
+    {
+        if (player == null) return;
+        if (remove(player.playerId, playerIdKeys, playerInSet))
+        {
+            // just in case
+            occupancy = Mathf.Max(0, occupancy - 1);
+        }
+    }
 }

@@ -1,1 +1,3 @@
 *.asset binary
+*.prefab binary
+*.unity binary

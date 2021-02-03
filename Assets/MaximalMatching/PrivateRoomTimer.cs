@@ -31,7 +31,11 @@ public class PrivateRoomTimer : UdonSharpBehaviour
                 if (currentRoom != null && currentRoom.localPlayerOccupying)
                 {
                     Debug.Log($"[PrivateRoomTimer] countdown over, teleporting player out");
-                    Networking.LocalPlayer.TeleportTo(teleportPoint.position, teleportPoint.rotation);
+                    // perturb the teleport point a bit so everyone isn't on top of eachother.
+                    Networking.LocalPlayer.TeleportTo(
+                        teleportPoint.position + new Vector3(
+                            UnityEngine.Random.Range(-3,3), 0, UnityEngine.Random.Range(-3,3)),
+                        teleportPoint.rotation);
                 } else
                 {
                     Debug.Log($"[PrivateRoomTimer] didn't teleport because player wasn't in room {currentRoom}");
