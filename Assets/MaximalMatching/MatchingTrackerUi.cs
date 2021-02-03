@@ -39,6 +39,8 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             // skip ourselves
             if (Networking.LocalPlayer == p)
             {
+                toggles[i].gameObject.SetActive(false);
+                activePlayerLastUpdate[i] = null;
                 continue;
             }
             toggles[i].gameObject.SetActive(true);

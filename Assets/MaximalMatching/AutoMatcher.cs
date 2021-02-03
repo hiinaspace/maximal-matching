@@ -139,9 +139,9 @@ public class AutoMatcher : UdonSharpBehaviour
 
         if (!MatchingTracker.started) return;
         var count = LobbyZone.occupancy;
-        if (count == 0 )
+        if (count < 2)
         {
-            FullStateDisplay.text = "0 players in lobby.";
+            FullStateDisplay.text = "not enough players in lobby.";
             return;
         }
 
