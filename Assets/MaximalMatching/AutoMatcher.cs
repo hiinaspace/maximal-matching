@@ -189,7 +189,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
             for (int j = i + 1; j < count; j++)
             {
-                s += originalUgraph[i * 80 + j] ? "O" : ".";
+                s += originalUgraph[i * count + j] ? "O" : ".";
             }
             s += "\n";
         }
