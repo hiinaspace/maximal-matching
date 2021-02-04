@@ -145,7 +145,27 @@ public class AutoMatcher : UdonSharpBehaviour
             return;
         }
 
-        var matchingObject = CalculateMatching(LobbyZone.GetOccupants());
+        var playerCount = VRCPlayerApi.GetPlayerCount();
+        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
+        VRCPlayerApi.GetPlayers(players);
+        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+
+        var global = MatchingTracker.ReadGlobalMatchingState();
+
+        // TODO optimize
+        var eligiblePlayers = LobbyZone.GetOccupants();
+        int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
+        for (int i = 0; i < eligiblePlayers.Length; i++)
+        {
+            eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
+        }
+        int[] orderedPlayerIds = new int[players.Length];
+        for (int i = 0; i < players.Length; i++)
+        {
+            orderedPlayerIds[i] = players[i].playerId;
+        }
+
+        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80, privateRoomOccupancy);
         int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
@@ -157,11 +177,6 @@ public class AutoMatcher : UdonSharpBehaviour
         s += $"matching={join(matching)}\n";
         s += $"rooms={join(rooms)}\n";
         s += $"originalUgraph:\n\n";
-        // TODO extract to function
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
         string[] names = new string[playerCount];
 
         for (int i = 0; i < count; i++)
@@ -191,7 +206,11 @@ public class AutoMatcher : UdonSharpBehaviour
     }
 
     // XXX string.Join doesn't work in udon
-    private string join(int[] a)
+    private 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        string join(int[] a)
     {
         var s = "";
         foreach (var i in a)
@@ -289,7 +308,11 @@ public class AutoMatcher : UdonSharpBehaviour
         Log($"Local player id={myPlayerId} ordinal={myOrdinal} in the lobby, but not in the matching, womp womp");
     }
 
-    private string mkugraph(bool[] ugraph, int eligibleCount)
+    private 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        string mkugraph(bool[] ugraph, int eligibleCount)
     {
         var s = "";
         for (int i = 0; i < eligibleCount; i++)
@@ -305,7 +328,33 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
-        var matchingObject = CalculateMatching(eligiblePlayers);
+        // have to get the full player list for ordinals.
+        var playerCount = VRCPlayerApi.GetPlayerCount();
+        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
+        VRCPlayerApi.GetPlayers(players);
+        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        var global = MatchingTracker.ReadGlobalMatchingState();
+
+        int[] privateRoomOccupancy = new int[privateRooms.Length];
+        for (int i = 0; i < privateRooms.Length; i++)
+        {
+            privateRoomOccupancy[i] = privateRooms[i].occupancy;
+        }
+
+        // TODO optimize
+        int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
+        for (int i = 0; i < eligiblePlayers.Length; i++)
+        {
+            eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
+        }
+        int[] orderedPlayerIds = new int[players.Length];
+        for (int i = 0; i < players.Length; i++)
+        {
+            orderedPlayerIds[i] = players[i].playerId;
+        }
+
+        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80, privateRoomOccupancy);
+
         int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
@@ -314,26 +363,23 @@ public class AutoMatcher : UdonSharpBehaviour
         SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, rooms);
     }
 
-    private object[] CalculateMatching(VRCPlayerApi[] eligiblePlayers)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        object[] CalculateMatching(int[] eligiblePlayerIds, int[] orderedPlayerIds, bool[] global, int globalDim, int[] privateRoomOccupancy)
     {
-        var eligibleCount = eligiblePlayers.Length;
+        var eligibleCount = eligiblePlayerIds.Length;
         Log($"{eligibleCount} players eligible for matching.");
-
-        // have to get the full player list for ordinals.
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
 
         // N^2 recovery of the ordinals of the eligible players.
         int[] eligiblePlayerOrdinals = new int[eligibleCount];
         for (int i = 0; i < eligibleCount; i++)
         {
-            var pid = eligiblePlayers[i].playerId;
-            for (int j = 0; j < players.Length; j++)
+            var pid = eligiblePlayerIds[i];
+            for (int j = 0; j < orderedPlayerIds.Length; j++)
             {
-                VRCPlayerApi player = players[j];
-                if (player.playerId == pid)
+                if (orderedPlayerIds[j] == pid)
                 {
                     eligiblePlayerOrdinals[i] = j;
                     break;
@@ -342,8 +388,6 @@ public class AutoMatcher : UdonSharpBehaviour
         }
 
         Log($"eligible player ordinals for matching: {join(eligiblePlayerOrdinals)}");
-
-        var global = MatchingTracker.ReadGlobalMatchingState();
 
         // fold the global state as an undirected graph of just the eligible
         // players, i.e. if either player indicates they were matched (by their
@@ -364,14 +408,15 @@ public class AutoMatcher : UdonSharpBehaviour
                 // small graph is eligible for match
                 ugraph[i * eligibleCount + j] =
                     // if both player says they haven't been matched
-                    !global[p1 * 80 + p2] && !global[p2 * 80 + p1];
+                    !global[p1 * globalDim + p2] && !global[p2 * globalDim + p1];
 
                 originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
             }
         }
         Log($"matching ugraph:\n{mkugraph(ugraph, eligibleCount)}");
 
-        int[] matching = new int[eligibleCount];
+        // get closest even matching
+        int[] matching = new int[(int)(eligibleCount / 2) * 2];
         int matchCount = GreedyRandomMatching(ugraph, eligibleCount, matching);
 
         // calculate which rooms are currently unoccupied (on the master)
@@ -380,9 +425,9 @@ public class AutoMatcher : UdonSharpBehaviour
         // but the countdown timer should get them out in time.
         int[] rooms = new int[matchCount];
         int r = 0;
-        for (int i = 0; i < privateRooms.Length; i++)
+        for (int i = 0; i < privateRoomOccupancy.Length; i++)
         {
-            if (privateRooms[i].occupancy == 0)
+            if (privateRoomOccupancy[i] == 0)
             {
                 if (r >= matchCount) break;
                 rooms[r++] = i;
@@ -395,6 +440,72 @@ public class AutoMatcher : UdonSharpBehaviour
         return new object[] { eligiblePlayerOrdinals, matching, matchCount, rooms, originalUgraph };
     }
 
+    // pick a random eligible pair until you can't anymore. not guaranteed to be maximal.
+    // https://en.wikipedia.org/wiki/Blossom_algorithm is the maximal way to do this. soon(tm)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int GreedyRandomMatching(bool[] ugraph, int count, int[] matching)
+    {
+        Log($"random matching {count} players on ugraph: {mkugraph(ugraph, count)}");
+        int midx = 0;
+        int[] matchable = new int[count];
+        int matchableCount;
+        while ((matchableCount = hasMatching(ugraph, count, matchable)) >= 1)
+        {
+            int chosen1 = matchable[UnityEngine.Random.Range(0, matchableCount)];
+            Log($"{matchableCount} matchable players remaining, chose {chosen1} first.");
+            int chosen2 = -1;
+            for (int j = chosen1 + 1; j < count; j++)
+            {
+                if (ugraph[chosen1 * count + j])
+                {
+                    chosen2 = j;
+                    break;
+                }
+            }
+            for (int i = 0; i < count; i++)
+            {
+                // zero out columns
+                ugraph[i * count + chosen2] = false;
+                ugraph[i * count + chosen1] = false;
+                // zero out rows
+                ugraph[chosen1 * count + i] = false;
+                ugraph[chosen2 * count + i] = false;
+            }
+
+            Log($"after matching {chosen1} and {chosen2}, ugraph: {mkugraph(ugraph, count)}");
+            matching[midx++] = chosen1;
+            matching[midx++] = chosen2;
+        }
+
+        return midx / 2;
+    }
+
+    // ordinals that have at least one matching
+    private 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int hasMatching(bool[] ugraph, int count, int[] matchable)
+    {
+        int n = 0;
+        for (int i = 0; i < count; i++)
+        {
+            for (int j = i + 1; j < count; j++)
+            {
+                if (ugraph[i * count + j])
+                {
+                    // TODO this can't ever select the very last player I think. need to check logic.
+                    matchable[n++] = i;
+                    break;
+                }
+            }
+        }
+        Log($"found {n} matchable players in {mkugraph(ugraph, count)}");
+        return n;
+    }
     private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount, int[] rooms)
     {
         int n = 0;
@@ -419,60 +530,6 @@ public class AutoMatcher : UdonSharpBehaviour
         matchingState1 = frame.Length > maxSyncedStringSize ? frame.Substring(maxSyncedStringSize) : "";
     }
 
-    // pick a random eligible pair until you can't anymore. not guaranteed to be maximal.
-    // https://en.wikipedia.org/wiki/Blossom_algorithm is the maximal way to do this. soon(tm)
-    private int GreedyRandomMatching(bool[] ugraph, int count, int[] matching)
-    {
-        Log($"random matching {count} players.");
-        int midx = 0;
-        int[] matchable = new int[count];
-        int matchableCount;
-        while ((matchableCount = hasMatching(ugraph, count, matchable)) > 0)
-        {
-            int chosen1 = matchable[UnityEngine.Random.Range(0, matchableCount)];
-            Log($"{matchableCount} matchable players remaining, chose {chosen1} first.");
-            int chosen2 = -1;
-            for (int j = chosen1 + 1; j < count; j++)
-            {
-                if (ugraph[chosen1 * count + j])
-                {
-                    chosen2 = j;
-                    break;
-                }
-            }
-            Log($"matched {chosen1} with {chosen2}.");
-            for (int i = 0; i < count; i++)
-            {
-                // zero out column
-                ugraph[i * count + chosen2] = false;
-                // zero out row
-                ugraph[chosen1 * count * i] = false;
-            }
-            matching[midx++] = chosen1;
-            matching[midx++] = chosen2;
-        }
-
-        return midx / 2;
-    }
-
-    // ordinals that have at least one matching
-    private int hasMatching(bool[] ugraph, int count, int[] matchable)
-    {
-        int n = 0;
-        for (int i = 0; i < count; i++)
-        {
-            for (int j = i + 1; j < count; j++)
-            {
-                if (ugraph[i * count + j])
-                {
-                    matchable[n++] = i;
-                    break;
-                }
-            }
-        }
-        return n;
-    }
-
     public override void OnPlayerJoined(VRCPlayerApi player)
     {
         lastPlayerJoinTime = Time.time;
@@ -483,14 +540,20 @@ public class AutoMatcher : UdonSharpBehaviour
         lastPlayerLeaveTime = Time.time;
         lastPlayerLeaveServerTimeMillis = Networking.GetServerTimeInMilliseconds();
     }
-    public void Log(string text)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        void Log(string text)
     {
+        Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
+#if COMPILER_UDONSHARP
         if (DebugLogText.text.Split('\n').Length > 30)
         {
             // trim
             DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
         }
         DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
-        Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
+#endif
     }
 }
