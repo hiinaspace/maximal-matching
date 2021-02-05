@@ -26,14 +26,22 @@ public class OccupantTracker : UdonSharpBehaviour
 
     public int occupancy = 0;
 
-    private bool lookup(int key, int[] keys, bool[] values)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        bool lookup(int key, int[] keys, bool[] values)
     {
         return values[quadraticProbe(key, keys)];
     }
 
     // quadratic probe since we're just using the player id as a key;
     // linear probe would get clumped up.
-    private int quadraticProbe(int key, int[] keys)
+    private 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int quadraticProbe(int key, int[] keys)
     {
         int i = key % SIZE;
         // key 0 == empty
@@ -42,7 +50,11 @@ public class OccupantTracker : UdonSharpBehaviour
         return i;
     }
 
-    private bool set(int key, bool value, int[] keys, bool[] values)
+    public
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        bool set(int key, bool value, int[] keys, bool[] values)
     {
         var i = quadraticProbe(key, keys);
         var newKey = keys[i] == 0;
@@ -51,7 +63,11 @@ public class OccupantTracker : UdonSharpBehaviour
         return newKey;
     }
 
-    private bool remove(int key, int[] keys, bool[] values)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        bool remove(int key, int[] keys, bool[] values)
     {
         var i = quadraticProbe(key, keys);
         var present = keys[i] > 0;
