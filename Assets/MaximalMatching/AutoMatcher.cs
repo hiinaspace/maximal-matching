@@ -70,6 +70,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void Update()
     {
+        if (Networking.LocalPlayer == null) return;
         lastUpdate = Time.time;
         var lobbyStartCountdown = Mathf.Max(0, LobbyStartWait - (Time.time - lobbyReadyTime));
         var lobbyQuiescenceCountdown = Mathf.Max(0, LobbyQuiescenceWait - (Time.time - LobbyZone.lastJoin));
@@ -145,10 +146,8 @@ public class AutoMatcher : UdonSharpBehaviour
             return;
         }
 
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        var playerCount = players.Length;
 
         var global = MatchingTracker.ReadGlobalMatchingState();
 
@@ -263,11 +262,8 @@ public class AutoMatcher : UdonSharpBehaviour
             return;
         }
         
-        // once more have to get ordinals.
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        var playerCount = players.Length;
 
         int myOrdinal = 0;
         int myPlayerId = Networking.LocalPlayer.playerId;
@@ -329,10 +325,7 @@ public class AutoMatcher : UdonSharpBehaviour
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
         // have to get the full player list for ordinals.
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         var global = MatchingTracker.ReadGlobalMatchingState();
 
         int[] privateRoomOccupancy = new int[privateRooms.Length];

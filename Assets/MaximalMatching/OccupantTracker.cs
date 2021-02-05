@@ -84,6 +84,8 @@ public class OccupantTracker : UdonSharpBehaviour
         int n = 0;
         foreach (var player in allPlayers)
         {
+            // XXX apparently GetPlayers can sometimes have null in it.
+            if (player == null) continue;
             if (lookup(player.playerId, playerIdKeys, playerInSet))
             {
                 occupants[n++] = player;

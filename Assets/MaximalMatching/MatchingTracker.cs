@@ -133,10 +133,8 @@ public class MatchingTracker : UdonSharpBehaviour
     // could instead keep track of insert time and keep track of the last 160 players or so, maybe later
     private void RebuildLocalState()
     {
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
 
         Log($"rebuilding local state to {playerCount} entries from {localStatePopulation} population");
         localStatePopulation = playerCount;
@@ -154,10 +152,8 @@ public class MatchingTracker : UdonSharpBehaviour
     // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.
     public bool[] ReadGlobalMatchingState()
     {
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
 
         var len = playerStates.Length;
         int[] explicitOwnerIds = new int[len];
@@ -258,10 +254,8 @@ public class MatchingTracker : UdonSharpBehaviour
     {
         var globalState = ReadGlobalMatchingState();
 
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
         string[] names = new string[playerCount];
         string s = "";
 
@@ -360,10 +354,8 @@ public class MatchingTracker : UdonSharpBehaviour
         if ((broadcastCooldown -= Time.deltaTime) > 0) return;
         broadcastCooldown = UnityEngine.Random.Range(1f, 2f);
 
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
         // 80 bits (79 other players at max)
         byte[] matchingBitmap = new byte[10];
 
@@ -379,7 +371,40 @@ public class MatchingTracker : UdonSharpBehaviour
         localPlayerState.matchingState = System.Convert.ToBase64String(matchingBitmap);
     }
 
-    public void SortPlayersByPlayerId(VRCPlayerApi[] players, int playerCount)
+    // get players ordered by playerId, and stripped of the weird null players that
+    // apparently occur sometimes.
+    public VRCPlayerApi[] GetOrderedPlayers()
+    {
+        var playerCount = VRCPlayerApi.GetPlayerCount();
+        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
+        VRCPlayerApi.GetPlayers(players);
+        // XXX i think I got an exception indicating players can be null
+        // somehow, so check and scream about it
+        int nonNullCount = 0;
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (players[i] == null)
+            {
+                Log("uhoh, got a null player from GetPlayers, thanks vrchat.");
+            } else
+            {
+                nonNullCount++;
+            }
+        }
+        VRCPlayerApi[] ret = new VRCPlayerApi[nonNullCount];
+        var n = 0;
+        for (int i = 0; i < playerCount; i++)
+        {
+            if (players[i] != null)
+            {
+                ret[n++] = players[i];
+            }
+        }
+        sort(ret, nonNullCount);
+        return ret;
+    }
+
+    private void sort(VRCPlayerApi[] players, int playerCount)
     {
         int i, j;
         VRCPlayerApi p;
