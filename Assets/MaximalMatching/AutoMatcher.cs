@@ -59,7 +59,6 @@ public class AutoMatcher : UdonSharpBehaviour
     // crash watchdog
     public float lastUpdate;
 
-
     private float debugStateCooldown = -1;
 
     void Start()
@@ -149,7 +148,7 @@ public class AutoMatcher : UdonSharpBehaviour
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         var playerCount = players.Length;
 
-        var global = MatchingTracker.ReadGlobalMatchingState();
+        var global = MatchingTracker.ReadGlobalMatchingState(false);
 
         // TODO optimize
         var eligiblePlayers = LobbyZone.GetOccupants();
@@ -324,9 +323,14 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
+        var global = MatchingTracker.ReadGlobalMatchingState(true);
+        if (global == null)
+        {
+            Log($"player states are out of sync, can't calculate a stable matching.");
+        }
+
         // have to get the full player list for ordinals.
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
-        var global = MatchingTracker.ReadGlobalMatchingState();
 
         int[] privateRoomOccupancy = new int[privateRooms.Length];
         for (int i = 0; i < privateRooms.Length; i++)

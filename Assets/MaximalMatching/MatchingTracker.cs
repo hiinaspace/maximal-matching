@@ -149,11 +149,33 @@ public class MatchingTracker : UdonSharpBehaviour
         localMatchingState = newMatchingState;
     }
 
+    // for players that aren't synced yet, temporarily exclude them from matching, i.e. saying
+    // they're already matched with everyone; 
+    private static byte[] NO_MATCHES = new byte[10] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+
+    private int calculateHash(VRCPlayerApi[] orderedPlayers)
+    {
+        int i = 0;
+        foreach (var player in orderedPlayers)
+        {
+            // stack overflow wasn't too helpful here for a nice
+            // order-independent int hash. I think this will do for the mostly
+            // sequential ids; note it's order sensitive so the players also
+            // need to be ordered.
+            i = i * 31 + player.playerId;
+        }
+        return i;
+    }
+
     // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.
-    public bool[] ReadGlobalMatchingState()
+    // if AbortOnDesync and any players aren't synced to the current set of players, returns null;
+    // all but the UI display uses that to prevent calculating matchings from desynced states.
+    public bool[] ReadGlobalMatchingState(bool abortOnDesync)
     {
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
+
+        var hash = calculateHash(players);
 
         var len = playerStates.Length;
         int[] explicitOwnerIds = new int[len];
@@ -181,12 +203,16 @@ public class MatchingTracker : UdonSharpBehaviour
                     break;
                 }
             }
-            if (sidx == -1)
+            var playerInSync = sidx != -1 && playerStates[sidx].playerIdSetHash == hash;
+            if (!playerInSync)
             {
-                Log($"player {player.displayName} id={pid} doesn't own a sync object yet");
+                Log($"player {player.displayName} id={pid} " +
+                    (sidx == -1 ? "doesn't own a sync object yet" : "hasn't updated their sync object yet"));
+                if (abortOnDesync) return null;
             }
-            byte[] bitmap = sidx == -1 ? new byte[10] :
-                System.Convert.FromBase64String(playerStates[sidx].matchingState);
+            byte[] bitmap = playerInSync ?
+                System.Convert.FromBase64String(playerStates[sidx].matchingState) :
+                NO_MATCHES;
 
             for (int j = 0; j < playerCount; j++)
             {
@@ -252,12 +278,14 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private void DisplayFullState()
     {
-        var globalState = ReadGlobalMatchingState();
+        var globalState = ReadGlobalMatchingState(false);
 
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
         string[] names = new string[playerCount];
-        string s = "";
+        string s = "global matching state\n" +
+            "✓ means \"has been matched\" from the row player's local perspective, '.' means \"has not been matched\". \n" +
+            "to be auto-matched, both players must not think they've been matched before.";
 
         for (int i = 0; i < playerCount; i++)
         {
@@ -265,7 +293,7 @@ public class MatchingTracker : UdonSharpBehaviour
             s += $"{players[i].displayName.PadLeft(15).Substring(0, 15)} ";
             for (int j = 0; j < playerCount; j++)
             {
-                s += i == j ? "\\" : globalState[i * 80 + j] ? "O" : ".";
+                s += i == j ? "\\" : globalState[i * 80 + j] ? "✓" : ".";
             }
             s += "\n";
         }
@@ -368,6 +396,7 @@ public class MatchingTracker : UdonSharpBehaviour
                 matchingBitmap[i / 8] |= (byte)(1 << (7 - i % 8));
             }
         }
+        localPlayerState.playerIdSetHash = calculateHash(players);
         localPlayerState.matchingState = System.Convert.ToBase64String(matchingBitmap);
     }
 

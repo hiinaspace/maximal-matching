@@ -50,4 +50,9 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
 
     // bitmap of "has been matched with" state by player ordinal.
     [UdonSynced] public string matchingState = "AAAAAAAAAAAAAA==";
+
+    // hash of all the live playerIds at the time of writing matchingState.
+    // used to detect whether the matchingState (by ordinal) is still valid for
+    // the master's view of the world.
+    [UdonSynced] public int playerIdSetHash;
 }
