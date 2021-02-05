@@ -81,14 +81,22 @@ public class MatchingTracker : UdonSharpBehaviour
         localStatePopulation = 0;
     }
 
-    private bool lookup(string key, string[] keys, bool[] values)
+    public
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        bool lookup(string key, string[] keys, bool[] values)
     {
         var i = linearProbe(key, keys);
         var k = keys[i];
         return k == null ? false : values[i];
     }
 
-    private int linearProbe(string key, string[] keys)
+    private 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int linearProbe(string key, string[] keys)
     {
         // XXX negative modulus happens sometimes. might be biased but good enough for here.
         var init = Mathf.Abs(key.GetHashCode()) % LOCAL_STATE_SIZE;
@@ -103,12 +111,16 @@ public class MatchingTracker : UdonSharpBehaviour
                 Log("uhoh wrapped around linear probe");
                 return -1;
             }
-            key = keys[i];
+            k = keys[i];
         }
         return i;
     }
 
-    private bool set(string key, bool value, string[] keys, bool[] values)
+    public
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        bool set(string key, bool value, string[] keys, bool[] values)
     {
         var i = linearProbe(key, keys);
         var newKey = keys[i] == null;
@@ -406,14 +418,20 @@ public class MatchingTracker : UdonSharpBehaviour
         enabledCursor = (enabledCursor + 1) % playerStates.Length;
     }
 
-    public void Log(string text)
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        void Log(string text)
     {
+#if COMPILER_UDONSHARP
         if (DebugLogText.text.Split('\n').Length > 30)
         {
             // trim
             DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
         }
         DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
+#endif
         Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
     }
 
