@@ -28,10 +28,8 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         if ((updateCooldown -= Time.deltaTime) > 0) return;
         updateCooldown = 1f;
 
-        var playerCount = VRCPlayerApi.GetPlayerCount();
-        VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
-        VRCPlayerApi.GetPlayers(players);
-        MatchingTracker.SortPlayersByPlayerId(players, playerCount);
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        var playerCount = players.Length;
         int i;
         for (i = 0; i < playerCount; i++)
         {

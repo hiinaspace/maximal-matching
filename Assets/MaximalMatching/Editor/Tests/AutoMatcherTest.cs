@@ -18,13 +18,11 @@ namespace Tests
                 new bool[] { O, _, _,
                              _, O, _,
                              _, _, O },
-                3,
-                new int[] { 0 });
+                3);
 
             int[] eligiblePlayerOrdinals = (int[])ret[0];
             int[] matching = (int[])ret[1];
             int matchCount = (int)ret[2];
-            int[] rooms = (int[])ret[3];
 
             Assert.That(eligiblePlayerOrdinals, Is.EqualTo(new int[] { 0, 1, 2 }));
             Assert.That(matching, 
@@ -36,7 +34,6 @@ namespace Tests
                 .Or.EqualTo(new int[] { 2, 0 })
                 );
             Assert.That(matchCount, Is.EqualTo(1));
-            Assert.That(rooms, Is.EqualTo(new int[] { 0 }));
         }
 
         [Test]
@@ -47,13 +44,11 @@ namespace Tests
                 new int[] { 1, 2},
                 new bool[] { O, _,
                              _, O },
-                2,
-                new int[] { 0 });
+                2);
 
             int[] eligiblePlayerOrdinals = (int[])ret[0];
             int[] matching = (int[])ret[1];
             int matchCount = (int)ret[2];
-            int[] rooms = (int[])ret[3];
 
             Assert.That(eligiblePlayerOrdinals, Is.EqualTo(new int[] { 0, 1 }));
             Assert.That(matching, 
@@ -61,7 +56,6 @@ namespace Tests
                 .Or.EqualTo(new int[] { 1, 0 })
                 );
             Assert.That(matchCount, Is.EqualTo(1));
-            Assert.That(rooms, Is.EqualTo(new int[] { 0 }));
         }
 
     }

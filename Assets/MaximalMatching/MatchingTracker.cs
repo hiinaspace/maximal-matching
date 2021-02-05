@@ -151,7 +151,7 @@ public class MatchingTracker : UdonSharpBehaviour
 
     // for players that aren't synced yet, temporarily exclude them from matching, i.e. saying
     // they're already matched with everyone; 
-    private static byte[] NO_MATCHES = new byte[10] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+    private byte[] NO_MATCHES = new byte[10] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
 
     private int calculateHash(VRCPlayerApi[] orderedPlayers)
     {
