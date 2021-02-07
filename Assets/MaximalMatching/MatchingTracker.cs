@@ -1,4 +1,4 @@
-﻿#define LOCAL_TEST_PLAYERIDS
+﻿#define NO_LOCAL_TEST_PLAYERIDS
 
 using UdonSharp;
 using UnityEngine;
@@ -15,11 +15,12 @@ public class MatchingTracker : UdonSharpBehaviour
     private MatchingTrackerPlayerState[] playerStates;
 
     // local hashmap of player to "has been matched with", by hash of the other player's displayName,
-    // cleared every so often.
-    const int LOCAL_STATE_SIZE = 80 * 4;
+    // since the absolute player ids will break after 1024 entries, size to at most 50% load factor.
+
+    const int LOCAL_STATE_SIZE = 2048;
     private string[] localMatchingKey = new string[LOCAL_STATE_SIZE];
     private bool[] localMatchingState = new bool[LOCAL_STATE_SIZE];
-    const int MAX_POPULATION = LOCAL_STATE_SIZE / 2;
+    private float[] lastChanged = new float[LOCAL_STATE_SIZE];
     private int localStatePopulation = 0;
 
     private MatchingTrackerPlayerState localPlayerState = null;
@@ -72,23 +73,26 @@ public class MatchingTracker : UdonSharpBehaviour
     {
         return lookup(GetDisplayName(other), localMatchingKey, localMatchingState);
     }
+    public float GetLastMatchedWith(VRCPlayerApi other)
+    {
+        var i = linearProbe(GetDisplayName(other), localMatchingKey);
+        var k = localMatchingKey[i];
+        return k == null ? float.MinValue : lastChanged[i];
+    }
 
     public void SetLocallyMatchedWith(VRCPlayerApi other, bool wasMatchedWith)
     {
         var name = GetDisplayName(other);
-        if (set(name, wasMatchedWith, localMatchingKey, localMatchingState))
+        if (set(name, wasMatchedWith, localMatchingKey, localMatchingState, lastChanged))
         {
             localStatePopulation++;
         }
         Log($"set matched with '{name}' to {wasMatchedWith}, population {localStatePopulation}");
-        if (localStatePopulation > MAX_POPULATION)
-        {
-            RebuildLocalState();
-        }
     }
 
     public void ClearLocalMatching()
     {
+        Log($"Clearing local matching state.");
         localMatchingKey = new string[LOCAL_STATE_SIZE];
         localMatchingState = new bool[LOCAL_STATE_SIZE];
         localStatePopulation = 0;
@@ -133,33 +137,14 @@ public class MatchingTracker : UdonSharpBehaviour
 #if !COMPILER_UDONSHARP
         static
 #endif
-        bool set(string key, bool value, string[] keys, bool[] values)
+        bool set(string key, bool value, string[] keys, bool[] values, float[] lastUpdate)
     {
         var i = linearProbe(key, keys);
         var newKey = keys[i] == null;
         keys[i] = key;
         values[i] = value;
+        lastUpdate[i] = Time.time;
         return newKey;
-    }
-
-    // rebuild the hash table with only entries for current players
-    // could instead keep track of insert time and keep track of the last 160 players or so, maybe later
-    private void RebuildLocalState()
-    {
-        VRCPlayerApi[] players = GetOrderedPlayers();
-        var playerCount = players.Length;
-
-        Log($"rebuilding local state to {playerCount} entries from {localStatePopulation} population");
-        localStatePopulation = playerCount;
-        string[] newMatchingKey = new string[LOCAL_STATE_SIZE];
-        bool[] newMatchingState = new bool[LOCAL_STATE_SIZE];
-        foreach (var player in players)
-        {
-            // copy to new map
-            set(GetDisplayName(player), GetLocallyMatchedWith(player), newMatchingKey, newMatchingState);
-        }
-        localMatchingKey = newMatchingKey;
-        localMatchingState = newMatchingState;
     }
 
     // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.

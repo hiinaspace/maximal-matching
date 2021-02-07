@@ -16,12 +16,13 @@ namespace Tests
             {
                 string[] keys = new string[320];
                 bool[] values = new bool[320];
+                float[] times = new float[320];
                 var realMap = new Dictionary<string, bool>();
                 for (int j = 0; j < 80; j++)
                 {
                     var key = RandomString(10);
                     realMap.Add(key, true);
-                    MatchingTracker.set(key, true, keys, values);
+                    MatchingTracker.set(key, true, keys, values, times);
                 }
                 foreach (var thing in realMap)
                 {

@@ -42,8 +42,22 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 continue;
             }
             toggles[i].gameObject.SetActive(true);
-            texts[i].text = MatchingTracker.GetDisplayName(p);
             var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(p);
+            if (wasMatchedWith)
+            {
+                texts[i].text = MatchingTracker.GetDisplayName(p);
+                var seconds = Time.time - MatchingTracker.GetLastMatchedWith(p);
+                var minutes = seconds / 60f;
+                var hours = minutes / 60f;
+                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} " +
+                    (hours > 0 ? $"({Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes):D2} ago)" :
+                    minutes > 1 ? $"({Mathf.FloorToInt(minutes):D2} seconds ago)" :
+                    $"({Mathf.FloorToInt(seconds):D2} seconds ago)");
+            }
+            else
+            {
+                texts[i].text = MatchingTracker.GetDisplayName(p);
+            }
             if (activePlayerLastUpdate[i] == MatchingTracker.GetDisplayName(p))
             {
                 // if player changed state in ui (doesn't match our internal state)
