@@ -46,5 +46,29 @@ namespace Tests
             return new string(stringChars);
         }
 
+
+        [Test]
+        public void PlayersToBytes()
+        {
+            for (int i = 0; i < 80; i++)
+            {
+                int[] playerIds = new int[80];
+                for (int j = 0; j < i; j++)
+                {
+                    playerIds[j] = UnityEngine.Random.Range(1, 1023);
+                }
+
+                //Debug.Log($"playerIds: {string.Join(",", playerIds)}");
+                var bytes = MatchingTracker.serializeBytes(i, playerIds);
+                var frame = MatchingTracker.SerializeFrame(bytes);
+                var deframe = MatchingTracker.DeserializeFrame(new string(frame));
+                Assert.That(deframe, Is.EqualTo(bytes));
+                var deser = MatchingTracker.deserializeBytes(deframe);
+                Assert.That(deser, Is.EqualTo(playerIds));
+            }
+
+        }
+
+
     }
 }

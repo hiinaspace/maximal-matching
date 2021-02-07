@@ -28,10 +28,6 @@ public class AutoMatcher : UdonSharpBehaviour
     // time until the first round starts after players initially enter the zone,
     // so don't have to wait a full round time to start.
     public float TimeUntilFirstRound = 10f;
-
-    // how long to wait for retry after failing to match due to desynced players.
-    public float MatchingTrackerQuiescenceWait = 3f;
-
     // seconds until the next matching round
     private float nextRoundCountdown = 0;
 
@@ -59,8 +55,6 @@ public class AutoMatcher : UdonSharpBehaviour
     private float lobbyReadyTime;
     private bool lobbyReady;
 
-    private float lastMatchingAttempt;
-
     // crash watchdog
     public float lastUpdate;
 
@@ -83,7 +77,6 @@ public class AutoMatcher : UdonSharpBehaviour
         // TODO this is weird and I think I can handle this better, but I'm sleepy. Need to wait less if zero players are matched.
         var timeSinceLobbyReady = Time.time - lobbyReadyTime;
         var timeSinceLastSeenMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0;
-        var timeSinceLastMatchingAttempt = Time.time - lastMatchingAttempt;
 
         if (LobbyZone.occupancy > 1)
         {
@@ -94,12 +87,8 @@ public class AutoMatcher : UdonSharpBehaviour
                     // very first match
                     if (lastSeenState0 == "" && timeSinceLobbyReady > TimeUntilFirstRound)
                     {
-                        if (timeSinceLastMatchingAttempt > MatchingTrackerQuiescenceWait)
-                        {
-                            lastMatchingAttempt = Time.time;
-                            Log($"initial countdown finished, trying first matching");
-                            WriteMatching(LobbyZone.GetOccupants());
-                        }
+                        Log($"initial countdown finished, trying first matching");
+                        WriteMatching(LobbyZone.GetOccupants());
                     }
                 }
             }
@@ -124,18 +113,14 @@ public class AutoMatcher : UdonSharpBehaviour
         // nobody to wait for
         if (Networking.IsMaster && lastSeenState0 != "" && timeSinceLastSeenMatching > (PrivateRoomTime + BetweenRoundTime))
         {
-            if (timeSinceLastMatchingAttempt > MatchingTrackerQuiescenceWait)
-            {
-                lastMatchingAttempt = Time.time;
-                Log($"trying another matching");
-                WriteMatching(LobbyZone.GetOccupants());
-            }
+            Log($"ready for new matching");
+            WriteMatching(LobbyZone.GetOccupants());
         }
 
         if (matchingState0 != lastSeenState0)
         {
             // got a new matching
-            // note this also runs on the master on the frame the new matching is written.
+            // note this also runs on the master on the frame the new matching is written, updating the `seen` variables.
             lastSeenState0 = matchingState0;
             ActOnMatching();
         }
@@ -149,14 +134,13 @@ public class AutoMatcher : UdonSharpBehaviour
             privateRoomOccupancy[i] = privateRooms[i].occupancy;
         }
         var countdown = lastSeenState0 == "" ?
-            (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds" : "(need players)") :
+            (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
             $"{(PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching)} seconds";
 
         DebugStateText.text = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster}\n" +
             $"countdown to next matching: {countdown}\n" +
             $"timeSinceLobbyReady={timeSinceLobbyReady} lobbyReady={lobbyReady}\n" +
             $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {PrivateRoomTime + BetweenRoundTime} since last successful matching)\n" +
-            $"timeSinceLastMatchingAttempt={timeSinceLastMatchingAttempt} (wait {MatchingTrackerQuiescenceWait} seconds after failed matching (on master))\n" +
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
@@ -173,7 +157,7 @@ public class AutoMatcher : UdonSharpBehaviour
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         var playerCount = players.Length;
 
-        var global = MatchingTracker.ReadGlobalMatchingState(false);
+        var global = MatchingTracker.ReadGlobalMatchingState();
 
         // TODO optimize
         var eligiblePlayers = LobbyZone.GetOccupants();
@@ -351,12 +335,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
-        var global = MatchingTracker.ReadGlobalMatchingState(true);
-        if (global == null)
-        {
-            Log($"player states are out of sync, can't calculate a stable matching.");
-        }
-
+        var global = MatchingTracker.ReadGlobalMatchingState();
         // have to get the full player list for ordinals.
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         // TODO optimize
@@ -376,18 +355,24 @@ public class AutoMatcher : UdonSharpBehaviour
         int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
+        // globalugraph = [3]
+        string log = (string)matchingObject[4];
+        Log(log);
 
         SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, players);
     }
 
-    public 
+    public
 #if !COMPILER_UDONSHARP
         static
 #endif
         object[] CalculateMatching(int[] eligiblePlayerIds, int[] orderedPlayerIds, bool[] global, int globalDim)
     {
+        // stick logs in local variable instead of spamming them in the console.
+        string[] log = new string[] { "" };
+
         var eligibleCount = eligiblePlayerIds.Length;
-        Log($"{eligibleCount} players eligible for matching.");
+        log[0] += $"{eligibleCount} players eligible for matching. ";
 
         // N^2 recovery of the ordinals of the eligible players.
         int[] eligiblePlayerOrdinals = new int[eligibleCount];
@@ -404,7 +389,7 @@ public class AutoMatcher : UdonSharpBehaviour
             }
         }
 
-        Log($"eligible player ordinals for matching: {join(eligiblePlayerOrdinals)}");
+        log[0] += $"eligible player ordinals for matching: {join(eligiblePlayerOrdinals)}. ";
 
         // fold the global state as an undirected graph of just the eligible
         // players, i.e. if either player indicates they were matched (by their
@@ -430,16 +415,16 @@ public class AutoMatcher : UdonSharpBehaviour
                 originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
             }
         }
-        Log($"matching ugraph:\n{mkugraph(ugraph, eligibleCount)}");
+        log[0] += ($"matching ugraph:\n{mkugraph(ugraph, eligibleCount)}. ");
 
         // get closest even matching
         int[] matching = new int[(int)(eligibleCount / 2) * 2];
-        int matchCount = GreedyRandomMatching(ugraph, eligibleCount, matching);
+        int matchCount = GreedyRandomMatching(ugraph, eligibleCount, matching, log);
 
-        Log($"calculated {matchCount} matchings: {join(matching)}");
+        log[0] += ($"calculated {matchCount} matchings: {join(matching)}.");
 
         // such is udon
-        return new object[] { eligiblePlayerOrdinals, matching, matchCount, originalUgraph };
+        return new object[] { eligiblePlayerOrdinals, matching, matchCount, originalUgraph, log[0]};
     }
 
     // pick a random eligible pair until you can't anymore. not guaranteed to be maximal.
@@ -448,16 +433,16 @@ public class AutoMatcher : UdonSharpBehaviour
 #if !COMPILER_UDONSHARP
         static
 #endif
-        int GreedyRandomMatching(bool[] ugraph, int count, int[] matching)
+        int GreedyRandomMatching(bool[] ugraph, int count, int[] matching, string[] log)
     {
-        Log($"random matching {count} players on ugraph: {mkugraph(ugraph, count)}");
+        log[0] += ($"random matching {count} players on ugraph: {mkugraph(ugraph, count)}\n");
         int midx = 0;
         int[] matchable = new int[count];
         int matchableCount;
-        while ((matchableCount = hasMatching(ugraph, count, matchable)) >= 1)
+        while ((matchableCount = hasMatching(ugraph, count, matchable, log)) >= 1)
         {
             int chosen1 = matchable[UnityEngine.Random.Range(0, matchableCount)];
-            Log($"{matchableCount} matchable players remaining, chose {chosen1} first.");
+            log[0] += ($"{matchableCount} matchable players remaining, chose {chosen1} first.\n");
             int chosen2 = -1;
             for (int j = chosen1 + 1; j < count; j++)
             {
@@ -477,7 +462,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 ugraph[chosen2 * count + i] = false;
             }
 
-            Log($"after matching {chosen1} and {chosen2}, ugraph: {mkugraph(ugraph, count)}");
+            log[0] += ($"after matching {chosen1} and {chosen2}, ugraph: {mkugraph(ugraph, count)}\n");
             matching[midx++] = chosen1;
             matching[midx++] = chosen2;
         }
@@ -490,7 +475,7 @@ public class AutoMatcher : UdonSharpBehaviour
 #if !COMPILER_UDONSHARP
         static
 #endif
-        int hasMatching(bool[] ugraph, int count, int[] matchable)
+        int hasMatching(bool[] ugraph, int count, int[] matchable, string[] log)
     {
         int n = 0;
         for (int i = 0; i < count; i++)
@@ -505,7 +490,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 }
             }
         }
-        Log($"found {n} matchable players in {mkugraph(ugraph, count)}");
+        log[0] += ($"found {n} matchable players in {mkugraph(ugraph, count)}");
         return n;
     }
     private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount,VRCPlayerApi[] players)
@@ -542,7 +527,7 @@ public class AutoMatcher : UdonSharpBehaviour
 #endif
         void Log(string text)
     {
-        Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
+        Debug.Log($"[MaximalMatching] [AutoMatcher] {text}");
 #if COMPILER_UDONSHARP
         if (DebugLogText.text.Split('\n').Length > 30)
         {

@@ -42,9 +42,9 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 continue;
             }
             toggles[i].gameObject.SetActive(true);
-            texts[i].text = p.displayName;
+            texts[i].text = MatchingTracker.GetDisplayName(p);
             var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(p);
-            if (activePlayerLastUpdate[i] == p.displayName)
+            if (activePlayerLastUpdate[i] == MatchingTracker.GetDisplayName(p))
             {
                 // if player changed state in ui (doesn't match our internal state)
                 if (toggles[i].isOn != lastSeenToggle[i])
@@ -60,7 +60,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             } else
             {
                 // wasn't the same player before
-                activePlayerLastUpdate[i] = p.displayName;
+                activePlayerLastUpdate[i] = MatchingTracker.GetDisplayName(p);
                 // set the UI state ignoring what it was
                 toggles[i].isOn = wasMatchedWith;
                 lastSeenToggle[i] = wasMatchedWith;

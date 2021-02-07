@@ -1,4 +1,5 @@
-﻿
+﻿#define LOCAL_TEST_PLAYERIDS
+
 using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
@@ -56,18 +57,30 @@ public class MatchingTracker : UdonSharpBehaviour
         started = true;
     }
 
+    public string GetDisplayName(VRCPlayerApi player)
+    {
+        return player.displayName
+#if LOCAL_TEST_PLAYERIDS
+            + $"-{player.playerId}"
+#endif
+            ;
+
+    }
+
+
     public bool GetLocallyMatchedWith(VRCPlayerApi other)
     {
-        return lookup(other.displayName, localMatchingKey, localMatchingState);
+        return lookup(GetDisplayName(other), localMatchingKey, localMatchingState);
     }
 
     public void SetLocallyMatchedWith(VRCPlayerApi other, bool wasMatchedWith)
     {
-        if (set(other.displayName, wasMatchedWith, localMatchingKey, localMatchingState))
+        var name = GetDisplayName(other);
+        if (set(name, wasMatchedWith, localMatchingKey, localMatchingState))
         {
             localStatePopulation++;
         }
-        Log($"set matched with '{other.displayName}' to {wasMatchedWith}, population {localStatePopulation}");
+        Log($"set matched with '{name}' to {wasMatchedWith}, population {localStatePopulation}");
         if (localStatePopulation > MAX_POPULATION)
         {
             RebuildLocalState();
@@ -143,39 +156,25 @@ public class MatchingTracker : UdonSharpBehaviour
         foreach (var player in players)
         {
             // copy to new map
-            set(player.displayName, GetLocallyMatchedWith(player), newMatchingKey, newMatchingState);
+            set(GetDisplayName(player), GetLocallyMatchedWith(player), newMatchingKey, newMatchingState);
         }
         localMatchingKey = newMatchingKey;
         localMatchingState = newMatchingState;
     }
 
-    // for players that aren't synced yet, temporarily exclude them from matching, i.e. saying
-    // they're already matched with everyone; 
-    private byte[] NO_MATCHES = new byte[10] { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-
-    private int calculateHash(VRCPlayerApi[] orderedPlayers)
-    {
-        int i = 0;
-        foreach (var player in orderedPlayers)
-        {
-            // stack overflow wasn't too helpful here for a nice
-            // order-independent int hash. I think this will do for the mostly
-            // sequential ids; note it's order sensitive so the players also
-            // need to be ordered.
-            i = i * 31 + player.playerId;
-        }
-        return i;
-    }
-
     // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.
     // if AbortOnDesync and any players aren't synced to the current set of players, returns null;
     // all but the UI display uses that to prevent calculating matchings from desynced states.
-    public bool[] ReadGlobalMatchingState(bool abortOnDesync)
+    public bool[] ReadGlobalMatchingState()
     {
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
-
-        var hash = calculateHash(players);
+        var playerOrdinalsById = new int[1024];
+        for (int i = 0; i < playerCount; i++)
+        {
+            // add 1, so that 0 becomes a sentinel value for 'not here'
+            playerOrdinalsById[players[i].playerId] = i + 1;
+        }
 
         var len = playerStates.Length;
         int[] explicitOwnerIds = new int[len];
@@ -203,26 +202,64 @@ public class MatchingTracker : UdonSharpBehaviour
                     break;
                 }
             }
-            var playerInSync = sidx != -1 && playerStates[sidx].playerIdSetHash == hash;
-            if (!playerInSync)
+            if (sidx == -1)
             {
-                Log($"player {player.displayName} id={pid} " +
-                    (sidx == -1 ? "doesn't own a sync object yet" : "hasn't updated their sync object yet"));
-                if (abortOnDesync) return null;
-            }
-            byte[] bitmap = playerInSync ?
-                System.Convert.FromBase64String(playerStates[sidx].matchingState) :
-                NO_MATCHES;
+                Log($"player {GetDisplayName(player)} id={pid} doesn't own a sync object yet");
+                // set 'has matched with' to everyone, so they don't get spurious matches while
+                // waiting to take ownership.
+                for (int j = 0; j < playerCount; j++)
+                {
+                    globalState[n * 80 + j] = true;
+                }
+            } else
+            {
+                byte[] playerList = DeserializeFrame(playerStates[sidx].matchingState);
+                int[] matchedPlayers = deserializeBytes(playerList);
 
-            for (int j = 0; j < playerCount; j++)
-            {
-                bool wasMatchedWith = ((bitmap[j / 8] >> (7 - j % 8)) & 1) == 1;
-                globalState[n * 80 + j] = wasMatchedWith;
+                for (int j = 0; j < matchedPlayers.Length; j++)
+                {
+                    var matchedPlayerId = matchedPlayers[j];
+                    // end of the list marker
+                    if (matchedPlayerId == 0) break;
+
+                    var matchedPlayerOrdinal = playerOrdinalsById[matchedPlayerId] - 1;
+                    // if the player is still in the instance
+                    if (matchedPlayerOrdinal >= 0)
+                    {
+                        globalState[n * 80 + matchedPlayerOrdinal] = true;
+                    }
+                }
             }
 
             n++;
         }
         return globalState;
+    }
+
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int[] deserializeBytes(byte[] bytes)
+    {
+        // 10 bits per player
+        int[] matchedPlayers = new int[80];
+        // deserialize 5 bytes int 4 player ids
+        for (int j = 0, k = 0; k < 80; j += 5, k += 4)
+        {
+            int a = bytes[j];
+            int b = bytes[j+1];
+            int c = bytes[j+2];
+            int d = bytes[j+3];
+            int e = bytes[j+4];
+            matchedPlayers[k] = (a << 2) + ((b >> 6) & 3);
+            matchedPlayers[k + 1] = ((b & 63) << 4) + ((c >> 4) & 15);
+            matchedPlayers[k + 2] = ((c & 15) << 6) + ((d >> 2) & 63);
+            matchedPlayers[k + 3] = ((d & 3) << 8) + e;
+            if (matchedPlayers[k + 3] == 0) break;
+        }
+        //Log($"deserialized matched players: {join(matchedPlayers)}");
+        return matchedPlayers;
     }
 
     private float debugStateCooldown = -1;
@@ -264,10 +301,10 @@ public class MatchingTracker : UdonSharpBehaviour
             $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\nplayerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
+            if ((i % 4) == 0) s += "\n";
             MatchingTrackerPlayerState playerState = playerStates[i];
             var o = playerState.GetExplicitOwner();
-            s += $"[{i}]=[{(o == null ? "" : o.displayName)}]:{playerState.ownerId}:{playerState.matchingState} ";
-            if ((i % 4) == 0) s += "\n";
+            s += $"[{i}]=[{(o == null ? "" : GetDisplayName(o))}]:{playerState.ownerId} ";
         }
         s += $"\nlocalPop={localStatePopulation} localPlayerid={Networking.LocalPlayer.playerId}";
         DebugStateText.text = s;
@@ -278,19 +315,19 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private void DisplayFullState()
     {
-        var globalState = ReadGlobalMatchingState(false);
+        var globalState = ReadGlobalMatchingState();
 
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
         string[] names = new string[playerCount];
         string s = "global matching state\n" +
             "✓ means \"has been matched\" from the row player's local perspective, '.' means \"has not been matched\". \n" +
-            "to be auto-matched, both players must not think they've been matched before.";
+            "to be auto-matched, both players must not think they've been matched before.\n\n";
 
         for (int i = 0; i < playerCount; i++)
         {
-            names[i] = players[i].displayName.PadRight(15).Substring(0, 15);
-            s += $"{players[i].displayName.PadLeft(15).Substring(0, 15)} ";
+            names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
+            s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
             for (int j = 0; j < playerCount; j++)
             {
                 s += i == j ? "\\" : globalState[i * 80 + j] ? "✓" : ".";
@@ -376,6 +413,24 @@ public class MatchingTracker : UdonSharpBehaviour
         }
     }
 
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        string join(int[] a)
+    {
+        var s = "";
+        foreach (var i in a)
+        {
+            s += $"{i},";
+        }
+        return s;
+    }
+
+    // 80 * 10 bits player ids. zeroes at the end will encode to zeros and signal end of list.
+    // need to fit at 100 bytes. 105 bytes * 8 / 7 = 120 chars.
+    private const int maxPacketCharSize = 120;
+    private const int maxDataByteSize = 105;
     private void BroadcastLocalState()
     {
         if (localPlayerState == null) return;
@@ -384,8 +439,9 @@ public class MatchingTracker : UdonSharpBehaviour
 
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
-        // 80 bits (79 other players at max)
-        byte[] matchingBitmap = new byte[10];
+
+        int matchCount = 0;
+        int[] matchedPlayerIds = new int[80];
 
         for (int i = 0; i < playerCount; i++)
         {
@@ -393,13 +449,126 @@ public class MatchingTracker : UdonSharpBehaviour
             bool matchedWithPlayer = GetLocallyMatchedWith(player);
             if (matchedWithPlayer)
             {
-                matchingBitmap[i / 8] |= (byte)(1 << (7 - i % 8));
+                //Log($"matched with player id {player.playerId}");
+                matchedPlayerIds[matchCount++] = player.playerId;
             }
         }
-        localPlayerState.playerIdSetHash = calculateHash(players);
-        localPlayerState.matchingState = System.Convert.ToBase64String(matchingBitmap);
+        //Log($"matched {matchCount} player ids: {join(matchedPlayerIds)}");
+        byte[] buf = serializeBytes(matchCount, matchedPlayerIds);
+        //Log($"serialized player ids: {System.Convert.ToBase64String(buf)}");
+        localPlayerState.matchingState = new string(SerializeFrame(buf));
     }
 
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        byte[] serializeBytes(int matchCount, int[] matchedPlayerIds)
+    {
+        byte[] buf = new byte[maxDataByteSize];
+        // serialize 4 10bit player ids into 5 bytes
+        // TODO could go from 7 10bit player ids into 10 chars directly.
+        for (int j = 0, k = 0; j < matchCount; j += 4, k += 5)
+        {
+            int a = matchedPlayerIds[j];
+            int b = matchedPlayerIds[j+1];
+            int c = matchedPlayerIds[j+2];
+            int d = matchedPlayerIds[j+3];
+            // first 8 of 0
+            buf[k] = (byte)((a >> 2) & 255);
+            // last 2 of 0, first 6 of 1
+            buf[k + 1] = (byte)(((a & 3) << 6) + ((b >> 4) & 63));
+            // last 4 of 1, first 4 of 2
+            buf[k + 2] = (byte)(((b & 15) << 4) + ((c >> 6) & 15));
+            // last 6 of 2, first 2 of 3
+            buf[k + 3] = (byte)(((c & 63) << 2) + ((d >> 8) & 3));
+            // last 8 of 3
+            buf[k + 4] = (byte)(d & 255);
+        }
+
+        return buf;
+    }
+
+    // from https://github.com/hiinaspace/just-mahjong/
+
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        char[] SerializeFrame(byte[] buf)
+    {
+        var frame = new char[maxPacketCharSize];
+        int n = 0;
+        for (int i = 0; i < maxDataByteSize;)
+        {
+            // pack 7 bytes into 56 bits;
+            ulong pack = buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            //DebugLong("packed: ", pack);
+
+            // unpack into 8 7bit asciis
+            frame[n++] = (char)((pack >> 49) & (ulong)127);
+            frame[n++] = (char)((pack >> 42) & (ulong)127);
+            frame[n++] = (char)((pack >> 35) & (ulong)127);
+            frame[n++] = (char)((pack >> 28) & (ulong)127);
+
+            frame[n++] = (char)((pack >> 21) & (ulong)127);
+            frame[n++] = (char)((pack >> 14) & (ulong)127);
+            frame[n++] = (char)((pack >> 7) & (ulong)127);
+            frame[n++] = (char)(pack & (ulong)127);
+            //DebugChars("chars: ", chars, n - 8);
+        }
+        return frame;
+    }
+
+    public
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        byte[] DeserializeFrame(string s)
+    {
+        var packet = new byte[maxDataByteSize];
+        
+        if (s.Length < maxPacketCharSize) return packet;
+
+        var frame = new char[maxPacketCharSize];
+        s.CopyTo(0, frame, 0, maxPacketCharSize);
+
+        int n = 0;
+        for (int i = 0; i < maxDataByteSize;)
+        {
+            //DebugChars("deser: ", chars, n);
+            // pack 8 asciis into 56 bits;
+            ulong pack = frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            //DebugLong("unpacked: ", pack);
+
+            // unpack into 7 bytes
+            packet[i++] = (byte)((pack >> 48) & (ulong)255);
+            packet[i++] = (byte)((pack >> 40) & (ulong)255);
+            packet[i++] = (byte)((pack >> 32) & (ulong)255);
+            packet[i++] = (byte)((pack >> 24) & (ulong)255);
+
+            packet[i++] = (byte)((pack >> 16) & (ulong)255);
+            packet[i++] = (byte)((pack >> 8) & (ulong)255);
+            packet[i++] = (byte)((pack >> 0) & (ulong)255);
+        }
+        return packet;
+    }
+   
     // get players ordered by playerId, and stripped of the weird null players that
     // apparently occur sometimes.
     public VRCPlayerApi[] GetOrderedPlayers()
@@ -420,6 +589,13 @@ public class MatchingTracker : UdonSharpBehaviour
                 nonNullCount++;
             }
         }
+        // if we're good
+        if (nonNullCount == playerCount)
+        {
+            sort(players, playerCount);
+            return players;
+        }
+
         VRCPlayerApi[] ret = new VRCPlayerApi[nonNullCount];
         var n = 0;
         for (int i = 0; i < playerCount; i++)
