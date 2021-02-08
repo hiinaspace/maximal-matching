@@ -303,7 +303,9 @@ public class AutoMatcher : UdonSharpBehaviour
                 Vector3 adjust = matching[i * 2] == myPlayerId ? Vector3.forward : Vector3.back;
                 // look at the center of the room
                 Quaternion rotation = Quaternion.LookRotation(adjust * -1);
-                Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation);
+                // avoid lerping (apparently on by default)
+                Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
+                    VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
                 PrivateRoomTimer.currentRoom = p;
                 PrivateRoomTimer.StartCountdown(PrivateRoomTime);
                 // teleport timer to location too as visual.

@@ -9,11 +9,19 @@ using VRC.Udon;
 // after the matching.
 public class PrivateRoomTimer : UdonSharpBehaviour
 {
-    public Transform teleportPoint;
+    // root/parent of a bunch of places to teleport the player to after the countdown.
+    public Transform teleportPointRoot;
+    private Transform[] teleportPoints;
+
     public UnityEngine.UI.Text visual;
     public OccupantTracker currentRoom;
     public float countdown;
     public bool countdownActive = false;
+
+    void Start()
+    {
+        teleportPoints = teleportPointRoot.GetComponentsInChildren<Transform>();
+    }
 
     public void StartCountdown(float countdownSecs)
     {
@@ -44,10 +52,10 @@ public class PrivateRoomTimer : UdonSharpBehaviour
 
     public void TeleportOut()
     {
-        // perturb the teleport point a bit so everyone isn't on top of eachother.
-        Networking.LocalPlayer.TeleportTo(
-            teleportPoint.position + new Vector3(
-                UnityEngine.Random.Range(-3, 3), 0, UnityEngine.Random.Range(-3, 3)),
-            teleportPoint.rotation);
+        // choose a random teleport point.
+        var teleportPoint = teleportPoints[UnityEngine.Random.Range(0, teleportPoints.Length)];
+        // avoid lerping the player to the teleport (apparently it does by default)
+        Networking.LocalPlayer.TeleportTo(teleportPoint.position, teleportPoint.rotation,
+            VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
     }
 }
