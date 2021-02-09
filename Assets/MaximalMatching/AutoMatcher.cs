@@ -9,6 +9,7 @@ public class AutoMatcher : UdonSharpBehaviour
     public UnityEngine.UI.Text DebugLogText;
     public UnityEngine.UI.Text DebugStateText;
     public UnityEngine.UI.Text FullStateDisplay;
+    public UnityEngine.UI.Text CountdownText;
 
     public MatchingTracker MatchingTracker;
     public OccupantTracker LobbyZone;
@@ -74,7 +75,7 @@ public class AutoMatcher : UdonSharpBehaviour
         // if we have seen matching, then count down (server time millis) from last seen by round time + between round time.
         // TODO this is weird and I think I can handle this better, but I'm sleepy. Need to wait less if zero players are matched.
         var timeSinceLobbyReady = Time.time - lobbyReadyTime;
-        var timeSinceLastSeenMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0;
+        var timeSinceLastSeenMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0f;
 
         if (LobbyZone.occupancy > 1)
         {
@@ -123,7 +124,25 @@ public class AutoMatcher : UdonSharpBehaviour
             ActOnMatching();
         }
 
+        UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastSeenMatching);
         DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
+    }
+
+    private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
+    {
+        if (lastSeenState0 == "")
+        {
+            CountdownText.text = LobbyZone.occupancy > 1 ?
+                $"First matching in {TimeUntilFirstRound - timeSinceLobbyReady:##} seconds" :
+                "Waiting for players in the Matching Room";
+        }
+        else
+        {
+            float seconds = PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching;
+            float minutes = seconds / 60;
+            CountdownText.text =
+                $"Next matching in {minutes:00}:{seconds:00}";
+        }
     }
 
     private void DebugState(float timeSinceLobbyReady, double timeSinceLastSeenMatching)
