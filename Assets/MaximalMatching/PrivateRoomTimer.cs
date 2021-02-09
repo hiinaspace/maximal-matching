@@ -44,7 +44,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
                 }
                 else
                 {
-                    Debug.Log($"[PrivateRoomTimer] didn't teleport because player wasn't in room {currentRoom}");
+                    Debug.Log($"[PrivateRoomTimer] didn't teleport because player wasn't in room.");
                 }
             }
         }
