@@ -21,7 +21,13 @@ public class PrivateRoomTimer : UdonSharpBehaviour
 
     void Start()
     {
-        teleportPoints = teleportPointRoot.GetComponentsInChildren<Transform>();
+        teleportPoints = new Transform[teleportPointRoot.childCount];
+        // XXX only way to get direct children.
+        int i = 0;
+        foreach (Transform point in teleportPointRoot)
+        {
+            teleportPoints[i++] = point;
+        }
     }
 
     public void StartCountdown(float countdownSecs)

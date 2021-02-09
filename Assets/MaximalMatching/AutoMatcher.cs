@@ -61,7 +61,14 @@ public class AutoMatcher : UdonSharpBehaviour
 
     void Start()
     {
-        privateRooms = PrivateZoneRoot.GetComponentsInChildren<Transform>();
+        privateRooms = new Transform[PrivateZoneRoot.transform.childCount];
+        // XXX no good way to get direct children of a transform except this apparently.
+        int i = 0;
+        foreach (Transform room in PrivateZoneRoot.transform)
+        {
+            privateRooms[i++] = room;
+
+        }
         Log($"Start AutoMatcher");
     }
 
