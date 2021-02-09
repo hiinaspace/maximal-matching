@@ -280,6 +280,9 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private void DebugState()
     {
+        // skip update if debug text is off
+        if (!DebugLogText.gameObject.activeInHierarchy) return;
+
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
         string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
@@ -640,12 +643,15 @@ public class MatchingTracker : UdonSharpBehaviour
         void Log(string text)
     {
 #if COMPILER_UDONSHARP
-        if (DebugLogText.text.Split('\n').Length > 30)
+        if (DebugLogText.gameObject.activeInHierarchy)
         {
-            // trim
-            DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
+            if (DebugLogText.text.Split('\n').Length > 30)
+            {
+                // trim
+                DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
+            }
+            DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
         }
-        DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
 #endif
         Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
     }
