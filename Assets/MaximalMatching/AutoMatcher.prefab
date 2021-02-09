@@ -11,7 +11,7 @@ GameObject:
   - component: {fileID: 7305076785774415313}
   - component: {fileID: 6443698127536228787}
   - component: {fileID: 7558145969275486910}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -176,8 +176,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1534914833971792835}
-  - component: {fileID: 1648639194378266192}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (10)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -199,19 +198,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 9
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1648639194378266192
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 558508377268069150}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &570342841945787767
 GameObject:
   m_ObjectHideFlags: 0
@@ -223,7 +209,7 @@ GameObject:
   - component: {fileID: 3446529273398264798}
   - component: {fileID: 5603154255820520929}
   - component: {fileID: 6123086110743598674}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -407,7 +393,7 @@ GameObject:
   - component: {fileID: 1455270383827774445}
   - component: {fileID: 5015918215279970049}
   - component: {fileID: 1251555085540988797}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -484,7 +470,7 @@ GameObject:
   - component: {fileID: 5261592634498764802}
   - component: {fileID: 8366859283687855489}
   - component: {fileID: 1115414091305349785}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -561,7 +547,7 @@ GameObject:
   - component: {fileID: 6252094578782437412}
   - component: {fileID: 4329714965707927287}
   - component: {fileID: 291490854308007398}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -636,8 +622,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2593943699421830216}
-  - component: {fileID: 6826552359442680432}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (36)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -659,19 +644,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 35
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6826552359442680432
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 672873826167722174}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &675274625182072983
 GameObject:
   m_ObjectHideFlags: 0
@@ -681,8 +653,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3607537950199139955}
-  - component: {fileID: 3138827399436809783}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (14)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -704,19 +675,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 13
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3138827399436809783
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 675274625182072983}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &726689605365634415
 GameObject:
   m_ObjectHideFlags: 0
@@ -729,7 +687,7 @@ GameObject:
   - component: {fileID: 811938788751644908}
   - component: {fileID: 7598299773295064512}
   - component: {fileID: 5473487515319532047}
-  m_Layer: 5
+  m_Layer: 2
   m_Name: Canvas
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -884,7 +842,7 @@ GameObject:
   - component: {fileID: 2337819173847330987}
   - component: {fileID: 7739217415844732981}
   - component: {fileID: 7132896311185102523}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -959,8 +917,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8805592857077476254}
-  - component: {fileID: 706505164406035720}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (15)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -982,19 +939,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 14
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &706505164406035720
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1019038330446230694}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &1272682007281908413
 GameObject:
   m_ObjectHideFlags: 0
@@ -1155,8 +1099,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5144586940509797114}
-  - component: {fileID: 8616014055928118208}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (19)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1178,19 +1121,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 18
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &8616014055928118208
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1303044039972692915}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &1406921578642848544
 GameObject:
   m_ObjectHideFlags: 0
@@ -1309,8 +1239,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5667976519248930877}
-  - component: {fileID: 511451307069721887}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (28)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1332,19 +1261,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 27
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &511451307069721887
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1781729915741041579}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &1929621402541905386
 GameObject:
   m_ObjectHideFlags: 0
@@ -1354,8 +1270,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8906589230739873538}
-  - component: {fileID: 9194137958278859516}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (11)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1377,19 +1292,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 10
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &9194137958278859516
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1929621402541905386}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &1988636098595445378
 GameObject:
   m_ObjectHideFlags: 0
@@ -1431,7 +1333,7 @@ GameObject:
   - component: {fileID: 7355170292908596952}
   - component: {fileID: 1396108584365385931}
   - component: {fileID: 4474863778526270880}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1508,7 +1410,7 @@ GameObject:
   - component: {fileID: 5032791521658536543}
   - component: {fileID: 9090957409438000787}
   - component: {fileID: 1447181927754012780}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1583,8 +1485,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8485296005486431247}
-  - component: {fileID: 4302585416062437102}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (40)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1606,19 +1507,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 39
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &4302585416062437102
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2160830400293466450}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &2203286060279976039
 GameObject:
   m_ObjectHideFlags: 0
@@ -1628,8 +1516,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8608935402480058315}
-  - component: {fileID: 3758648469950984823}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (26)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1651,19 +1538,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 25
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3758648469950984823
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2203286060279976039}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &2209176764788586350
 GameObject:
   m_ObjectHideFlags: 0
@@ -1735,7 +1609,7 @@ GameObject:
   - component: {fileID: 9191220581663866061}
   - component: {fileID: 7001055700445147851}
   - component: {fileID: 7813338013312235474}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1810,8 +1684,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7446243667157423158}
-  - component: {fileID: 725357357916591100}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (8)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1833,19 +1706,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 7
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &725357357916591100
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2512216065823189064}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &2582040805528543052
 GameObject:
   m_ObjectHideFlags: 0
@@ -1857,7 +1717,7 @@ GameObject:
   - component: {fileID: 6437991145024373805}
   - component: {fileID: 3104711026469642731}
   - component: {fileID: 4396424756434824740}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -1934,7 +1794,7 @@ GameObject:
   - component: {fileID: 5673502065164580333}
   - component: {fileID: 3143613094580117514}
   - component: {fileID: 1839199765146108849}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2011,7 +1871,7 @@ GameObject:
   - component: {fileID: 8741106899285132062}
   - component: {fileID: 4927539512520928142}
   - component: {fileID: 6373563901693483322}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2116,8 +1976,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8444074415383587467}
-  - component: {fileID: 3962035438146829595}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (5)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2139,19 +1998,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 4
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3962035438146829595
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2951964237766063392}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3036567445482689066
 GameObject:
   m_ObjectHideFlags: 0
@@ -2163,7 +2009,7 @@ GameObject:
   - component: {fileID: 8855483549993156560}
   - component: {fileID: 5041353357133346109}
   - component: {fileID: 6513582237420357291}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2240,7 +2086,7 @@ GameObject:
   - component: {fileID: 843391383875452873}
   - component: {fileID: 5193504090857362271}
   - component: {fileID: 7067786502327472860}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2315,8 +2161,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4900945108465334081}
-  - component: {fileID: 3307593955815668847}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (35)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2338,19 +2183,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 34
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3307593955815668847
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3107201255857784891}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3157276196380835392
 GameObject:
   m_ObjectHideFlags: 0
@@ -2439,7 +2271,7 @@ GameObject:
   - component: {fileID: 3058968770503192473}
   - component: {fileID: 769040787462717956}
   - component: {fileID: 4421202278143558617}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2553,7 +2385,7 @@ GameObject:
   - component: {fileID: 1953213910687942180}
   - component: {fileID: 7670456078141668098}
   - component: {fileID: 624453852018999151}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2660,7 +2492,7 @@ GameObject:
   - component: {fileID: 3487453476363619319}
   - component: {fileID: 6676290883716303740}
   - component: {fileID: 3607274381040024618}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2735,8 +2567,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5910288485012357432}
-  - component: {fileID: 2977459393298349081}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (24)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2758,19 +2589,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 23
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &2977459393298349081
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3585386916678754806}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3673236430965161375
 GameObject:
   m_ObjectHideFlags: 0
@@ -2782,7 +2600,7 @@ GameObject:
   - component: {fileID: 7753690602751165287}
   - component: {fileID: 5109510215995863679}
   - component: {fileID: 7397597122287727466}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2857,8 +2675,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6102903366623067317}
-  - component: {fileID: 7271397560223729266}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (2)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2880,19 +2697,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7271397560223729266
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3765238306081327103}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3855438916391712376
 GameObject:
   m_ObjectHideFlags: 0
@@ -2902,8 +2706,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8341323865683224571}
-  - component: {fileID: 4688256403733682490}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (3)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -2925,19 +2728,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &4688256403733682490
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3855438916391712376}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3856753384476802611
 GameObject:
   m_ObjectHideFlags: 0
@@ -2979,7 +2769,7 @@ GameObject:
   - component: {fileID: 5473129975348660304}
   - component: {fileID: 386219675889346602}
   - component: {fileID: 5913006469549181847}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3054,8 +2844,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1712051822000399174}
-  - component: {fileID: 444583367264819047}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (31)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3077,19 +2866,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 30
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &444583367264819047
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3941772007531892921}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &3954281069002940277
 GameObject:
   m_ObjectHideFlags: 0
@@ -3099,8 +2875,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5992887902652961719}
-  - component: {fileID: 4279854690942973402}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (29)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3122,19 +2897,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 28
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &4279854690942973402
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 3954281069002940277}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &4070324279784181031
 GameObject:
   m_ObjectHideFlags: 0
@@ -3218,7 +2980,7 @@ GameObject:
   - component: {fileID: 4136348138925747220}
   - component: {fileID: 3873503136517398053}
   - component: {fileID: 8902096282325954254}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3325,7 +3087,7 @@ GameObject:
   - component: {fileID: 8747540111857318264}
   - component: {fileID: 7861372378840499644}
   - component: {fileID: 2477231258415214137}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3430,8 +3192,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4986332199655436452}
-  - component: {fileID: 7511712309721248767}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (38)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3453,19 +3214,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 37
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7511712309721248767
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4443790383295273473}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &4454501714469986796
 GameObject:
   m_ObjectHideFlags: 0
@@ -3550,7 +3298,7 @@ GameObject:
   - component: {fileID: 592833805684960791}
   - component: {fileID: 7477592736310757814}
   - component: {fileID: 2261644643745820031}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3627,7 +3375,7 @@ GameObject:
   - component: {fileID: 4140398507733503381}
   - component: {fileID: 9107815026263707163}
   - component: {fileID: 5529358462687099358}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3762,8 +3510,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3613683950936049566}
-  - component: {fileID: 2209718723945719044}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (6)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3785,19 +3532,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 5
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &2209718723945719044
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4584449893793345806}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &4667247904808662669
 GameObject:
   m_ObjectHideFlags: 0
@@ -3914,8 +3648,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2265895651309506513}
-  - component: {fileID: 8593339086873623584}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (22)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -3937,19 +3670,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 21
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &8593339086873623584
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 4936793307791807373}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &4936967517690190953
 GameObject:
   m_ObjectHideFlags: 0
@@ -3961,7 +3681,7 @@ GameObject:
   - component: {fileID: 3592887261691976795}
   - component: {fileID: 7996500351204965521}
   - component: {fileID: 7902303937850149306}
-  m_Layer: 5
+  m_Layer: 2
   m_Name: Countdown
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4096,8 +3816,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7992804379380948244}
-  - component: {fileID: 6631474836728173843}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (20)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4119,19 +3838,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 19
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6631474836728173843
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5008733785129938963}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5247097833339324028
 GameObject:
   m_ObjectHideFlags: 0
@@ -4220,7 +3926,7 @@ GameObject:
   - component: {fileID: 6808076213950977290}
   - component: {fileID: 2698378923946801388}
   - component: {fileID: 2948286418323724082}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4401,7 +4107,7 @@ GameObject:
   - component: {fileID: 3608234992778115622}
   - component: {fileID: 1366721941471464769}
   - component: {fileID: 9128372584279332409}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4508,7 +4214,7 @@ GameObject:
   - component: {fileID: 8870033676392347209}
   - component: {fileID: 4569967299828292074}
   - component: {fileID: 6577991340214149403}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4585,7 +4291,7 @@ GameObject:
   - component: {fileID: 8419221051488720560}
   - component: {fileID: 8794164835855433475}
   - component: {fileID: 390957642227955452}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: LobbyZone
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4653,8 +4359,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8690638550972231246}
-  - component: {fileID: 6320050242423992595}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (13)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4676,19 +4381,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 12
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6320050242423992595
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5420686646122429501}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5449545471968027387
 GameObject:
   m_ObjectHideFlags: 0
@@ -4728,8 +4420,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 5809233978114185142}
-  - component: {fileID: 6707474231544389109}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (27)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4751,19 +4442,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 26
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6707474231544389109
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5568852740740159205}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5627900121354058836
 GameObject:
   m_ObjectHideFlags: 0
@@ -4909,8 +4587,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2762014490766836051}
-  - component: {fileID: 6261021824712979643}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (39)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4932,19 +4609,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 38
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &6261021824712979643
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5753025019542827674}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5786498388859663242
 GameObject:
   m_ObjectHideFlags: 0
@@ -4954,8 +4618,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8630203607243363374}
-  - component: {fileID: 9010425763162662293}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (32)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -4977,19 +4640,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 31
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &9010425763162662293
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5786498388859663242}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5813555423612541060
 GameObject:
   m_ObjectHideFlags: 0
@@ -5029,8 +4679,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 916552796050760486}
-  - component: {fileID: 3661173034810767894}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (1)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5052,19 +4701,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3661173034810767894
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5813732810395869626}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &5841957577569624285
 GameObject:
   m_ObjectHideFlags: 0
@@ -5074,8 +4710,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4554188010543910603}
-  - component: {fileID: 5566393142146053160}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (4)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5097,19 +4732,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 3
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &5566393142146053160
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5841957577569624285}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6090883905780226599
 GameObject:
   m_ObjectHideFlags: 0
@@ -5121,7 +4743,7 @@ GameObject:
   - component: {fileID: 7844875238378313909}
   - component: {fileID: 5761164138757653049}
   - component: {fileID: 566235866562827643}
-  m_Layer: 0
+  m_Layer: 23
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5198,7 +4820,7 @@ GameObject:
   - component: {fileID: 4873038039583680727}
   - component: {fileID: 8138972311033896953}
   - component: {fileID: 2026422440409763965}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5273,8 +4895,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 6552107722591540469}
-  - component: {fileID: 8994419450287961478}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (17)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5296,19 +4917,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 16
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &8994419450287961478
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6114245779596577968}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6129140377281380167
 GameObject:
   m_ObjectHideFlags: 0
@@ -5348,8 +4956,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8944645889794241643}
-  - component: {fileID: 8873512260180958144}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (33)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5371,19 +4978,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 32
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &8873512260180958144
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6389848599802759605}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6412765631518925313
 GameObject:
   m_ObjectHideFlags: 0
@@ -5395,7 +4989,7 @@ GameObject:
   - component: {fileID: 6311595201370599268}
   - component: {fileID: 1932120732099491872}
   - component: {fileID: 5070080499055601401}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5470,8 +5064,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3353975673864759488}
-  - component: {fileID: 1799900712899540830}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (25)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5493,19 +5086,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 24
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1799900712899540830
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6505626763596886737}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6595375900995045108
 GameObject:
   m_ObjectHideFlags: 0
@@ -5515,8 +5095,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7399721060248545377}
-  - component: {fileID: 3454303914420999908}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (7)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5538,19 +5117,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 6
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3454303914420999908
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6595375900995045108}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6604193809503459528
 GameObject:
   m_ObjectHideFlags: 0
@@ -5560,8 +5126,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 4216461836008518357}
-  - component: {fileID: 5180819901265738675}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (12)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5583,19 +5148,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 11
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &5180819901265738675
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6604193809503459528}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6639009376793709335
 GameObject:
   m_ObjectHideFlags: 0
@@ -5605,8 +5157,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 899258058141462767}
-  - component: {fileID: 3704682474732800287}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (21)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5628,19 +5179,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 20
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3704682474732800287
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6639009376793709335}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6653819039540925844
 GameObject:
   m_ObjectHideFlags: 0
@@ -5652,7 +5190,7 @@ GameObject:
   - component: {fileID: 5410574863548821518}
   - component: {fileID: 6928466959938490264}
   - component: {fileID: 3138889953821735671}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5729,7 +5267,7 @@ GameObject:
   - component: {fileID: 7950916784411957328}
   - component: {fileID: 214516029548577142}
   - component: {fileID: 8032416678671411086}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5804,8 +5342,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7787878191174352357}
-  - component: {fileID: 5745543003259212460}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (34)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5827,19 +5364,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 33
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &5745543003259212460
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 6922812874375890851}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &6970709936974385911
 GameObject:
   m_ObjectHideFlags: 0
@@ -5849,7 +5373,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7041327877012019534}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: PrivateZoneRoot
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -5987,8 +5511,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2629998589819087072}
-  - component: {fileID: 7393139163523577405}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (30)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6010,19 +5533,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 29
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7393139163523577405
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7037227303715770371}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &7101604237736111377
 GameObject:
   m_ObjectHideFlags: 0
@@ -6062,8 +5572,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 7860250275670009773}
-  - component: {fileID: 3810678137768026605}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (16)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6085,19 +5594,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 15
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &3810678137768026605
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7166635249039968830}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &7353307798693988120
 GameObject:
   m_ObjectHideFlags: 0
@@ -6107,8 +5603,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 3943478562077116928}
-  - component: {fileID: 7601947023260886063}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (23)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6130,19 +5625,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 22
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &7601947023260886063
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7353307798693988120}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &7391733703108131123
 GameObject:
   m_ObjectHideFlags: 0
@@ -6154,7 +5636,7 @@ GameObject:
   - component: {fileID: 8871907991690424336}
   - component: {fileID: 7442967528584643891}
   - component: {fileID: 7050954467395997984}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6229,8 +5711,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 414754228152451402}
-  - component: {fileID: 1919230478190276604}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (37)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6252,19 +5733,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 36
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &1919230478190276604
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7428285123463059838}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &7478622654756650588
 GameObject:
   m_ObjectHideFlags: 0
@@ -6276,7 +5744,7 @@ GameObject:
   - component: {fileID: 2849214450944220205}
   - component: {fileID: 3001771448074101709}
   - component: {fileID: 3397974943361165321}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6353,7 +5821,7 @@ GameObject:
   - component: {fileID: 513466401534643975}
   - component: {fileID: 7807364673095044734}
   - component: {fileID: 1581547475864061570}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6430,7 +5898,7 @@ GameObject:
   - component: {fileID: 4571851329831599338}
   - component: {fileID: 8427615163060865282}
   - component: {fileID: 2405539989812065669}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoomTimer
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6500,8 +5968,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2433979568460297480}
-  - component: {fileID: 8413404259097991997}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (18)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6523,19 +5990,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 17
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &8413404259097991997
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 7862623742028600252}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &7914529356232118603
 GameObject:
   m_ObjectHideFlags: 0
@@ -6613,7 +6067,7 @@ GameObject:
   - component: {fileID: 5351084798839720947}
   - component: {fileID: 2523841090414690896}
   - component: {fileID: 6041469035022126990}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6720,7 +6174,7 @@ GameObject:
   - component: {fileID: 2251541465375837817}
   - component: {fileID: 4210031191628235768}
   - component: {fileID: 4692756786175894260}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6797,7 +6251,7 @@ GameObject:
   - component: {fileID: 7940159426800981}
   - component: {fileID: 8391229648240861003}
   - component: {fileID: 7876403451370107212}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6872,8 +6326,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 8751312470606906093}
-  - component: {fileID: 4859218355524760627}
-  m_Layer: 0
+  m_Layer: 18
   m_Name: PrivateRoom (9)
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6895,19 +6348,6 @@ Transform:
   m_Father: {fileID: 7041327877012019534}
   m_RootOrder: 8
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &4859218355524760627
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8554201028191060550}
-  m_Material: {fileID: 0}
-  m_IsTrigger: 1
-  m_Enabled: 1
-  serializedVersion: 2
-  m_Size: {x: 5, y: 4, z: 5}
-  m_Center: {x: 0, y: 2, z: 0}
 --- !u!1 &8620532076760531453
 GameObject:
   m_ObjectHideFlags: 0
@@ -6919,7 +6359,7 @@ GameObject:
   - component: {fileID: 3089935376767833340}
   - component: {fileID: 8839843764701542992}
   - component: {fileID: 3387837090872077770}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -6996,7 +6436,7 @@ GameObject:
   - component: {fileID: 6604614085832175772}
   - component: {fileID: 4502605959395819546}
   - component: {fileID: 4325141571678470100}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7073,7 +6513,7 @@ GameObject:
   - component: {fileID: 2688058848789524402}
   - component: {fileID: 4287721861763025914}
   - component: {fileID: 2932546097127623160}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -7210,7 +6650,7 @@ GameObject:
   - component: {fileID: 991867222032168090}
   - component: {fileID: 1710990100784979375}
   - component: {fileID: 6926771739213729480}
-  m_Layer: 0
+  m_Layer: 2
   m_Name: Visual
   m_TagString: Untagged
   m_Icon: {fileID: 0}
