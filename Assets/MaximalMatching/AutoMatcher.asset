@@ -1155,7 +1155,7 @@ MonoBehaviour:
       Data: 69|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: OccupantTracker[], Assembly-CSharp
+      Data: UnityEngine.Transform[], UnityEngine.CoreModule
     - Name: 
       Entry: 8
       Data: 
@@ -1167,7 +1167,7 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: UnityEngineComponentArray
+      Data: UnityEngineTransformArray
     - Name: symbolOriginalName
       Entry: 1
       Data: privateRooms
@@ -1193,8 +1193,8 @@ MonoBehaviour:
       Entry: 8
       Data: 
     - Name: userBehaviourSource
-      Entry: 10
-      Data: 1
+      Entry: 6
+      Data: 
     - Name: 
       Entry: 8
       Data: 
