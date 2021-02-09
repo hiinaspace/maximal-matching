@@ -14,7 +14,8 @@ public class PrivateRoomTimer : UdonSharpBehaviour
     private Transform[] teleportPoints;
 
     public UnityEngine.UI.Text visual;
-    public OccupantTracker currentRoom;
+
+    private bool localPlayerStillHere;
     public float countdown;
     public bool countdownActive = false;
 
@@ -36,7 +37,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
             {
                 countdownActive = false;
                 // only teleport if the player is still in the room.
-                if (currentRoom != null && currentRoom.localPlayerOccupying)
+                if (localPlayerStillHere)
                 {
                     Debug.Log($"[PrivateRoomTimer] countdown over, teleporting player out");
                     TeleportOut();
@@ -57,5 +58,13 @@ public class PrivateRoomTimer : UdonSharpBehaviour
         // avoid lerping the player to the teleport (apparently it does by default)
         Networking.LocalPlayer.TeleportTo(teleportPoint.position, teleportPoint.rotation,
             VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
+    }
+    public override void OnPlayerTriggerEnter(VRCPlayerApi player)
+    {
+        if (player == Networking.LocalPlayer) localPlayerStillHere = true;
+    }
+    public override void OnPlayerTriggerExit(VRCPlayerApi player)
+    {
+        if (player == Networking.LocalPlayer) localPlayerStillHere = false;
     }
 }

@@ -49,7 +49,7 @@ public class AutoMatcher : UdonSharpBehaviour
     private int[] lastSeenMatching = new int[0];
     private int lastSeenMatchCount = 0;
 
-    private OccupantTracker[] privateRooms;
+    private Transform[] privateRooms;
 
     private float lobbyReadyTime;
     private bool lobbyReady;
@@ -61,7 +61,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
     void Start()
     {
-        privateRooms = PrivateZoneRoot.GetComponentsInChildren<OccupantTracker>();
+        privateRooms = PrivateZoneRoot.GetComponentsInChildren<Transform>();
         Log($"Start AutoMatcher");
     }
 
@@ -152,11 +152,6 @@ public class AutoMatcher : UdonSharpBehaviour
 
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
-        int[] privateRoomOccupancy = new int[privateRooms.Length];
-        for (int i = 0; i < privateRooms.Length; i++)
-        {
-            privateRoomOccupancy[i] = privateRooms[i].occupancy;
-        }
         var countdown = lastSeenState0 == "" ?
             (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
             $"{(PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching)} seconds";
@@ -167,8 +162,7 @@ public class AutoMatcher : UdonSharpBehaviour
             $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {PrivateRoomTime + BetweenRoundTime} since last successful matching)\n" +
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
-            $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
-            $"privateRoomOccupancy={join(privateRoomOccupancy)}";
+            $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
 
         if (!MatchingTracker.started) return;
         var count = LobbyZone.occupancy;
@@ -281,16 +275,6 @@ public class AutoMatcher : UdonSharpBehaviour
         Log($"Deserialized new matching at {lastSeenMatchingServerTimeMillis}, with {matchCount}\n" +
             $"matchings: [{join(matching)}]");
 
-        // check if local player is in a private room, in case they're interfering.
-        foreach (var room in privateRooms)
-        {
-            if (room.localPlayerOccupying)
-            {
-                Log($"found player in private room {room}, teleporting out.");
-                PrivateRoomTimer.TeleportOut();
-            }
-        }
-
         if (matchCount == 0) return; // nothing to do
         
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
@@ -330,7 +314,6 @@ public class AutoMatcher : UdonSharpBehaviour
                 // avoid lerping (apparently on by default)
                 Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
                     VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-                PrivateRoomTimer.currentRoom = p;
                 PrivateRoomTimer.StartCountdown(PrivateRoomTime);
                 // teleport timer to location too as visual.
                 PrivateRoomTimer.transform.position = p.transform.position;
