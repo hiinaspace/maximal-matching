@@ -28,8 +28,6 @@ public class AutoMatcher : UdonSharpBehaviour
     // time until the first round starts after players initially enter the zone,
     // so don't have to wait a full round time to start.
     public float TimeUntilFirstRound = 10f;
-    // seconds until the next matching round
-    private float nextRoundCountdown = 0;
 
     // base64 serialized:
     // 4 byte serverTimeMillis for checking for a new matching, and the countdown till a new round
@@ -125,7 +123,14 @@ public class AutoMatcher : UdonSharpBehaviour
             ActOnMatching();
         }
 
-        // debug state
+        DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
+    }
+
+    private void DebugState(float timeSinceLobbyReady, double timeSinceLastSeenMatching)
+    {
+        // skip update if debug text is off
+        if (!DebugLogText.gameObject.activeInHierarchy) return;
+
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
         int[] privateRoomOccupancy = new int[privateRooms.Length];
@@ -531,12 +536,15 @@ public class AutoMatcher : UdonSharpBehaviour
     {
         Debug.Log($"[MaximalMatching] [AutoMatcher] {text}");
 #if COMPILER_UDONSHARP
-        if (DebugLogText.text.Split('\n').Length > 30)
+        if (DebugLogText.gameObject.activeInHierarchy)
         {
-            // trim
-            DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
+            if (DebugLogText.text.Split('\n').Length > 30)
+            {
+                // trim
+                DebugLogText.text = DebugLogText.text.Substring(DebugLogText.text.IndexOf('\n') + 1);
+            }
+            DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
         }
-        DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
 #endif
     }
 
