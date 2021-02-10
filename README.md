@@ -1,7 +1,6 @@
 # udon maximal matching
 
 TODO
-add remote matched with to player UI
 cache global mapping bool[] by ownership order (for display)
 
 add 'enable matching' bool to player state and UI and check in automatcher

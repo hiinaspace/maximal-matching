@@ -10,6 +10,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
     public GameObject CanvasRoot;
     public Transform HeadTracker;
     public MatchingTracker MatchingTracker;
+    public UnityEngine.UI.Text title;
 
     private UnityEngine.UI.Toggle[] toggles;
     private bool[] lastSeenToggle;
@@ -93,6 +94,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         if ((updateCooldown -= Time.deltaTime) > 0) return;
         updateCooldown = 1f;
 
+        var matchesRemaining = 0;
         for (int i = 0; i < 80; i++)
         {
             MatchingTrackerPlayerState state = MatchingTracker.playerStates[i];
@@ -126,6 +128,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             else
             {
                 texts[i].text = MatchingTracker.GetDisplayName(p);
+                matchesRemaining++;
             }
             if (activePlayerLastUpdate[i] == MatchingTracker.GetDisplayName(p))
             {
@@ -150,5 +153,6 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 lastSeenToggle[i] = wasMatchedWith;
             }
         }
+        title.text = $"Player Checklist ({matchesRemaining} matches remaining)";
     }
 }
