@@ -60,7 +60,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 {
                     // move the box collider slightly behind the head again for pickup
                     var attachPoint =
-                        HeadTracker.TransformPoint(new Vector3(0, -0.2f, -0.1f) - collider.center);
+                        HeadTracker.TransformPoint(new Vector3(0, -0.3f, -1f) - collider.center);
                     transform.position = attachPoint;
                     // flip backward so grabbing it with your hand over shoulder turns it to the right position
                     transform.rotation = HeadTracker.rotation * Quaternion.AngleAxis(-90, Vector3.right);
