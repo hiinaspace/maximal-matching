@@ -89,34 +89,39 @@ public class MatchingTrackerUi : UdonSharpBehaviour
 
     private void UpdateCanvas()
     {
+        if (!MatchingTracker.started) return;
         if ((updateCooldown -= Time.deltaTime) > 0) return;
         updateCooldown = 1f;
 
-        VRCPlayerApi[] players = MatchingTracker.GetActivePlayers();
-        var playerCount = players.Length;
-        int i;
-        for (i = 0; i < playerCount; i++)
+        for (int i = 0; i < 80; i++)
         {
-            VRCPlayerApi p = players[i];
-            // skip ourselves
-            if (Networking.LocalPlayer == p)
+            MatchingTrackerPlayerState state = MatchingTracker.playerStates[i];
+            VRCPlayerApi p = state.GetExplicitOwner();
+            if (p == null || Networking.LocalPlayer == p)
             {
                 toggles[i].gameObject.SetActive(false);
                 activePlayerLastUpdate[i] = null;
                 continue;
             }
+
             toggles[i].gameObject.SetActive(true);
             var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(p);
+            var matchedWithUs = state.matchedWithLocalPlayer;
+
             if (wasMatchedWith)
             {
                 texts[i].text = MatchingTracker.GetDisplayName(p);
                 var seconds = Time.time - MatchingTracker.GetLastMatchedWith(p);
                 var minutes = seconds / 60f;
                 var hours = minutes / 60f;
-                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} " +
-                    (hours > 1 ? $"({Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes):D2} ago)" :
-                    minutes > 1 ? $"({Mathf.FloorToInt(minutes):D2} seconds ago)" :
-                    $"({Mathf.FloorToInt(seconds):D2} seconds ago)");
+                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (matched " +
+                    (hours > 1 ? $"{Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes):D2} ago)" :
+                    minutes > 1 ? $"{Mathf.FloorToInt(minutes):##} minutes ago)" :
+                    $"{Mathf.FloorToInt(seconds):##} seconds ago)");
+            }
+            else if (matchedWithUs)
+            {
+                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (matched with you on their end)";
             }
             else
             {
@@ -135,7 +140,6 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                     toggles[i].isOn = wasMatchedWith;
                 }
                 lastSeenToggle[i] = toggles[i].isOn;
-
             }
             else
             {
@@ -145,11 +149,6 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 toggles[i].isOn = wasMatchedWith;
                 lastSeenToggle[i] = wasMatchedWith;
             }
-        }
-        for (; i < toggles.Length; i++)
-        {
-            toggles[i].gameObject.SetActive(false);
-            activePlayerLastUpdate[i] = null;
         }
     }
 }

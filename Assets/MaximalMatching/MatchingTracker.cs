@@ -12,7 +12,7 @@ public class MatchingTracker : UdonSharpBehaviour
     public UnityEngine.UI.Text FullStateDisplay;
     public GameObject PlayerStateRoot;
 
-    private MatchingTrackerPlayerState[] playerStates;
+    public MatchingTrackerPlayerState[] playerStates;
 
     // local hashmap of player to "has been matched with", by hash of the other player's displayName,
     // since the absolute player ids will break after 1024 entries, size to at most 50% load factor.
