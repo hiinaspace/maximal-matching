@@ -38,7 +38,8 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
     public VRCPlayerApi GetExplicitOwner()
     {
         var networkingOwner = Networking.GetOwner(gameObject);
-        return (networkingOwner.playerId == ownerId) ? networkingOwner : null;
+        // XXX networking owner will be null for the first few frames.
+        return (networkingOwner != null && networkingOwner.playerId == ownerId) ? networkingOwner : null;
     }
 
     public void TakeExplicitOwnership()
