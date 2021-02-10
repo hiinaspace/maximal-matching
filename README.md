@@ -1,5 +1,13 @@
 # udon maximal matching
 
+TODO
+change player order to matching tracker ownership order where applicable (no N^2 sorting or reconciliation needed)
+cache global mapping bool[] by ownership order
+add remote matched with to player UI
+
+add 'enable matching' bool to player state and UI and check in automatcher
+add 'start first matching' button for master
+
 
 ## Design
 

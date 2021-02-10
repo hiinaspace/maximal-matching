@@ -60,11 +60,11 @@ namespace Tests
                 }
 
                 //Debug.Log($"playerIds: {string.Join(",", playerIds)}");
-                var bytes = MatchingTracker.serializeBytes(i, playerIds);
-                var frame = MatchingTracker.SerializeFrame(bytes);
-                var deframe = MatchingTracker.DeserializeFrame(new string(frame));
+                var bytes = MatchingTrackerPlayerState.serializeBytes(i, playerIds);
+                var frame = MatchingTrackerPlayerState.SerializeFrame(bytes);
+                var deframe = MatchingTrackerPlayerState.DeserializeFrame(new string(frame));
                 Assert.That(deframe, Is.EqualTo(bytes));
-                var deser = MatchingTracker.deserializeBytes(deframe);
+                var deser = MatchingTrackerPlayerState.deserializeBytes(deframe);
                 Assert.That(deser, Is.EqualTo(playerIds));
             }
 
