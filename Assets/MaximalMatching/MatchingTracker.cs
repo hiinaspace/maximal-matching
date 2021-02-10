@@ -17,7 +17,8 @@ public class MatchingTracker : UdonSharpBehaviour
     // local hashmap of player to "has been matched with", by hash of the other player's displayName,
     // since the absolute player ids will break after 1024 entries, size to at most 50% load factor.
 
-    const int LOCAL_STATE_SIZE = 2048;
+    public const int LOCAL_STATE_SIZE = 2048;
+
     private string[] localMatchingKey = new string[LOCAL_STATE_SIZE];
     private bool[] localMatchingState = new bool[LOCAL_STATE_SIZE];
     private float[] lastChanged = new float[LOCAL_STATE_SIZE];
@@ -149,78 +150,59 @@ public class MatchingTracker : UdonSharpBehaviour
         return newKey;
     }
 
-    // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.
-    // if AbortOnDesync and any players aren't synced to the current set of players, returns null;
-    // all but the UI display uses that to prevent calculating matchings from desynced states.
-    public bool[] ReadGlobalMatchingState()
+    // deserializes all the player matching states into a (flattened) bool
+    // array, indexable by owner of the player state array, and add all the
+    // live players in the `outPlayers` array.
+    public bool[] ReadGlobalMatchingState(VRCPlayerApi[] outPlayers)
     {
-        VRCPlayerApi[] players = GetOrderedPlayers();
-        var playerCount = players.Length;
-        var playerOrdinalsById = new int[1024];
-        for (int i = 0; i < playerCount; i++)
-        {
-            // add 1, so that 0 becomes a sentinel value for 'not here'
-            playerOrdinalsById[players[i].playerId] = i + 1;
-        }
-
-        var len = playerStates.Length;
-        int[] explicitOwnerIds = new int[len];
-        {
-            var i = 0;
-            foreach (var stateObject in playerStates)
-            {
-                var owner = stateObject.GetExplicitOwner();
-                explicitOwnerIds[i++] = owner == null ? -1 : owner.playerId;
-            }
-        }
-
-        // TODO don't need sorting and N^2 stuff here, since everything is absolute playerids now.
-
         bool[] globalState = new bool[80 * 80];
-        var n = 0;
-        foreach (var player in players)
+
+        // collect ordinals by ids and fill outPlayers
+        // ordinal in the sync object array (and the outPlayers array) by player id
+        var ordinalById = new int[1024];
+        for (int i = 0; i < 80; i++)
         {
-            var pid = player.playerId;
-            // do an N^2 search
-            var sidx = -1;
-            for (int i = 0; i < len; i++)
+            var state = playerStates[i];
+            var owner = state.GetExplicitOwner();
+            if (owner != null)
             {
-                if (explicitOwnerIds[i] == pid)
+                outPlayers[i] = owner;
+                // add 1, so that 0 becomes a sentinel value for 'not here'
+                ordinalById[owner.playerId] = i + 1;
+            }
+            else
+            {
+                // XXX mark their row as matched by everyone to avoid matching
+                // on this ordinal. messy I know.
+                for (int j = 0; j < 80; j++)
                 {
-                    sidx = i;
-                    break;
+                    globalState[i * 80 + j] = true;
                 }
             }
-            if (sidx == -1)
-            {
-                Log($"player {GetDisplayName(player)} id={pid} doesn't own a sync object yet");
-                // set 'has matched with' to everyone, so they don't get spurious matches while
-                // waiting to take ownership.
-                for (int j = 0; j < playerCount; j++)
-                {
-                    globalState[n * 80 + j] = true;
-                }
-            } else
-            {
-                int[] matchedPlayers = playerStates[sidx].matchedPlayerIds;
+        }
 
-                for (int j = 0; j < matchedPlayers.Length; j++)
+        // now that we know which players are live, fill out the rest of the array
+        for (int i = 0; i < 80; i++)
+        {
+            var state = playerStates[i];
+            var owner = state.GetExplicitOwner();
+            if (owner != null)
+            {
+                for (int j = 0; j < 80; j++)
                 {
-                    var matchedPlayerId = matchedPlayers[j];
-                    // end of the list marker
-                    if (matchedPlayerId == 0) break;
-
-                    var matchedPlayerOrdinal = playerOrdinalsById[matchedPlayerId] - 1;
-                    // if the player is still in the instance
-                    if (matchedPlayerOrdinal >= 0)
+                    var matched = state.matchedPlayerIds[j];
+                    if (matched == 0) break; // done with this player
+                    var ordinal = ordinalById[matched] - 1;
+                    // if matched player owns a sync object
+                    if (ordinal >= 0)
                     {
-                        globalState[n * 80 + matchedPlayerOrdinal] = true;
+                        // mark as matched
+                        globalState[i * 80 + ordinal] = true;
                     }
                 }
             }
-
-            n++;
         }
+
         return globalState;
     }
 
@@ -280,20 +262,26 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private void DisplayFullState()
     {
-        var globalState = ReadGlobalMatchingState();
+        VRCPlayerApi[] players = new VRCPlayerApi[80];
+        var globalState = ReadGlobalMatchingState(players);
 
-        VRCPlayerApi[] players = GetOrderedPlayers();
-        var playerCount = players.Length;
-        string[] names = new string[playerCount];
+        string[] names = new string[80];
         string s = "global matching state\n" +
             "✓ means \"has been matched\" from the row player's local perspective, '.' means \"has not been matched\". \n" +
-            "to be auto-matched, both players must not think they've been matched before.\n\n";
+            "to be auto-matched, both players need to indicate they haven't been matched before.\n\n";
 
-        for (int i = 0; i < playerCount; i++)
+        for (int i = 0; i < 80; i++)
         {
-            names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
-            s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
-            for (int j = 0; j < playerCount; j++)
+            if (players[i] != null)
+            {
+                names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
+                s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
+            }
+            else
+            {
+                s += "                "; // 16 spaces
+            }
+            for (int j = 0; j < 80; j++)
             {
                 s += i == j ? "\\" : globalState[i * 80 + j] ? "✓" : ".";
             }
@@ -302,9 +290,16 @@ public class MatchingTracker : UdonSharpBehaviour
         for (int i = 0; i < 15; i++)
         {
             s += "\n                "; // 16 spaces
-            for (int j = 0; j < playerCount; j++)
+            for (int j = 0; j < 80; j++)
             {
-                s += names[j][i];
+                if (players[j] == null)
+                {
+                    s += " ";
+                }
+                else
+                {
+                    s += names[j][i];
+                }
             }
         }
         FullStateDisplay.text = s;
@@ -404,8 +399,7 @@ public class MatchingTracker : UdonSharpBehaviour
     // set our local player state object from the hash map
     private void SerializeLocalState()
     {
-        // TODO doesn't need to be ordered
-        VRCPlayerApi[] players = GetOrderedPlayers();
+        VRCPlayerApi[] players = GetActivePlayers();
         var playerCount = players.Length;
 
         int matchCount = 0;
@@ -424,9 +418,9 @@ public class MatchingTracker : UdonSharpBehaviour
         localPlayerState.SerializeLocalState(matchedPlayerIds, matchCount);
     }
 
-    // get players ordered by playerId, and stripped of the weird null players that
+    // get players stripped of the weird null players that
     // apparently occur sometimes.
-    public VRCPlayerApi[] GetOrderedPlayers()
+    public VRCPlayerApi[] GetActivePlayers()
     {
         var playerCount = VRCPlayerApi.GetPlayerCount();
         VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
@@ -447,7 +441,6 @@ public class MatchingTracker : UdonSharpBehaviour
         // if we're good
         if (nonNullCount == playerCount)
         {
-            sort(players, playerCount);
             return players;
         }
 
@@ -460,27 +453,7 @@ public class MatchingTracker : UdonSharpBehaviour
                 ret[n++] = players[i];
             }
         }
-        sort(ret, nonNullCount);
         return ret;
-    }
-
-    private void sort(VRCPlayerApi[] players, int playerCount)
-    {
-        int i, j;
-        VRCPlayerApi p;
-        int key;
-        for (i = 1; i < playerCount; i++)
-        {
-            p = players[i];
-            key = p.playerId;
-            j = i - 1;
-            while (j >= 0 && players[j].playerId > key)
-            {
-                players[j + 1] = players[j];
-                j--;
-            }
-            players[j + 1] = p;
-        }
     }
 
     private void JuggleActiveGameobjects()

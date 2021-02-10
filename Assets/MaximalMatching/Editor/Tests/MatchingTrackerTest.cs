@@ -11,12 +11,13 @@ namespace Tests
         [Test]
         public void stringHashMap()
         {
+            int LOCAL_STATE_SIZE = 2048;
             // exercise with random values
             for (int i = 0; i < 100; ++i)
             {
-                string[] keys = new string[320];
-                bool[] values = new bool[320];
-                float[] times = new float[320];
+                string[] keys = new string[LOCAL_STATE_SIZE];
+                bool[] values = new bool[LOCAL_STATE_SIZE];
+                float[] times = new float[LOCAL_STATE_SIZE];
                 var realMap = new Dictionary<string, bool>();
                 for (int j = 0; j < 80; j++)
                 {

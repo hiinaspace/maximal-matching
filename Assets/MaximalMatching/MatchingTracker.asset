@@ -370,7 +370,7 @@ MonoBehaviour:
       Data: 
     - Name: declarationType
       Entry: 3
-      Data: 258
+      Data: 257
     - Name: syncMode
       Entry: 3
       Data: 0

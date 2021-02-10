@@ -172,61 +172,66 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
 
         if (!MatchingTracker.started) return;
-        var count = LobbyZone.occupancy;
-        if (count < 2)
+        var lobbyOccupancy = LobbyZone.occupancy;
+        if (lobbyOccupancy < 2)
         {
             FullStateDisplay.text = "not enough players in lobby.";
             return;
         }
 
-        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
-        var playerCount = players.Length;
+        VRCPlayerApi[] players = new VRCPlayerApi[80];
+        var global = MatchingTracker.ReadGlobalMatchingState(players);
 
-        var global = MatchingTracker.ReadGlobalMatchingState();
-
-        // TODO optimize
         var eligiblePlayers = LobbyZone.GetOccupants();
         int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
         for (int i = 0; i < eligiblePlayers.Length; i++)
         {
             eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
         }
-        int[] orderedPlayerIds = new int[players.Length];
+        int[] playerIdsbyGlobalOrdinal = new int[players.Length];
         for (int i = 0; i < players.Length; i++)
         {
-            orderedPlayerIds[i] = players[i].playerId;
+            if (players[i] != null) playerIdsbyGlobalOrdinal[i] = players[i].playerId;
         }
 
-        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
-        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
+        var matchingObject = CalculateMatching(eligiblePlayerIds, playerIdsbyGlobalOrdinal, global, 80);
+        int[] eligiblePlayerOrdinalsPlus1 = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
         bool[] originalUgraph = (bool[])matchingObject[3];
         var s = $"current potential matching:\n";
-        s += $"eligiblePlayerOrdinals={join(eligiblePlayerOrdinals)}\n";
+        s += $"eligiblePlayerOrdinalsPlus1={join(eligiblePlayerOrdinalsPlus1)}\n";
         s += $"matchCount={matchCount}\n";
         s += $"matching={join(matching)}\n";
         s += $"originalUgraph:\n\n";
-        string[] names = new string[playerCount];
+        string[] names = new string[80];
 
-        for (int i = 0; i < count; i++)
+        for (int i = 0; i < lobbyOccupancy; i++)
         {
-            var ordinal = eligiblePlayerOrdinals[i];
-            names[i] = players[ordinal].displayName.PadRight(15).Substring(0, 15);
-            s += $"{players[ordinal].displayName.PadLeft(15).Substring(0, 15)} ";
+            var ordinal = eligiblePlayerOrdinalsPlus1[i] - 1;
+            if (ordinal >= 0)
+            {
+                names[i] = players[ordinal].displayName.PadRight(15).Substring(0, 15);
+                s += $"{players[ordinal].displayName.PadLeft(15).Substring(0, 15)} ";
+            }
+            else
+            {
+                names[i] = "                "; // 16 spaces
+                s += "                "; // 16 spaces
+            }
 
             for (int j = 0; j < i; j++) s += " ";
 
-            for (int j = i + 1; j < count; j++)
+            for (int j = i + 1; j < lobbyOccupancy; j++)
             {
-                s += originalUgraph[i * count + j] ? "O" : ".";
+                s += originalUgraph[i * lobbyOccupancy + j] ? "O" : ".";
             }
             s += "\n";
         }
         for (int i = 0; i < 15; i++)
         {
             s += "\n                "; // 16 spaces
-            for (int j = 0; j < count; j++)
+            for (int j = 0; j < lobbyOccupancy; j++)
             {
                 s += names[j][i];
             }
@@ -284,7 +289,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
         if (matchCount == 0) return; // nothing to do
         
-        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        VRCPlayerApi[] players = MatchingTracker.GetActivePlayers();
         int myPlayerId = Networking.LocalPlayer.playerId;
 
         for (int i = 0; i < matchCount; i++)
@@ -351,38 +356,39 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
-        var global = MatchingTracker.ReadGlobalMatchingState();
-        // have to get the full player list for ordinals.
-        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
-        // TODO optimize
+        VRCPlayerApi[] players = new VRCPlayerApi[80];
+        var global = MatchingTracker.ReadGlobalMatchingState(players);
+
         int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
         for (int i = 0; i < eligiblePlayers.Length; i++)
         {
             eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
         }
-        int[] orderedPlayerIds = new int[players.Length];
+
+        // XXX this can have gaps in it since not all players necessarily own a sync object yet
+        int[] playerIdsByGlobalOrdinal = new int[80];
         for (int i = 0; i < players.Length; i++)
         {
-            orderedPlayerIds[i] = players[i].playerId;
+            if (players[i] != null) playerIdsByGlobalOrdinal[i] = players[i].playerId;
         }
 
-        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
+        var matchingObject = CalculateMatching(eligiblePlayerIds, playerIdsByGlobalOrdinal, global, 80);
 
-        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
+        int[] eligiblePlayerOrdinalsPlus1 = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
         // globalugraph = [3]
         string log = (string)matchingObject[4];
         Log(log);
 
-        SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, players);
+        SerializeMatching(eligiblePlayerOrdinalsPlus1, matching, matchCount, players);
     }
 
     public
 #if !COMPILER_UDONSHARP
         static
 #endif
-        object[] CalculateMatching(int[] eligiblePlayerIds, int[] orderedPlayerIds, bool[] global, int globalDim)
+        object[] CalculateMatching(int[] eligiblePlayerIds, int[] playerIdsByGlobalOrdinal, bool[] global, int globalDim)
     {
         // stick logs in local variable instead of spamming them in the console.
         string[] log = new string[] { "" };
@@ -390,22 +396,24 @@ public class AutoMatcher : UdonSharpBehaviour
         var eligibleCount = eligiblePlayerIds.Length;
         log[0] += $"{eligibleCount} players eligible for matching. ";
 
-        // N^2 recovery of the ordinals of the eligible players.
-        int[] eligiblePlayerOrdinals = new int[eligibleCount];
+        // N^2 recovery of the index into the global map of the eligible players.
+        // XXX as a sentinel, 0 = "not in the global table yet", otherwise it's
+        // the index plus 1
+        int[] eligiblePlayerOrdinalsPlus1 = new int[eligibleCount];
         for (int i = 0; i < eligibleCount; i++)
         {
             var pid = eligiblePlayerIds[i];
-            for (int j = 0; j < orderedPlayerIds.Length; j++)
+            for (int j = 0; j < playerIdsByGlobalOrdinal.Length; j++)
             {
-                if (orderedPlayerIds[j] == pid)
+                if (playerIdsByGlobalOrdinal[j] == pid)
                 {
-                    eligiblePlayerOrdinals[i] = j;
+                    eligiblePlayerOrdinalsPlus1[i] = j + 1;
                     break;
                 }
             }
         }
 
-        log[0] += $"eligible player ordinals for matching: {join(eligiblePlayerOrdinals)}. ";
+        log[0] += $"eligible player ordinals (+1) for matching: {join(eligiblePlayerOrdinalsPlus1)}. ";
 
         // fold the global state as an undirected graph of just the eligible
         // players, i.e. if either player indicates they were matched (by their
@@ -418,17 +426,26 @@ public class AutoMatcher : UdonSharpBehaviour
         var originalUgraph = new bool[eligibleCount * eligibleCount];
         for (int i = 0; i < eligibleCount; i++)
         {
-            int p1 = eligiblePlayerOrdinals[i];
-            // only need top triangle of the matrix
-            for (int j = i + 1; j < eligibleCount; j++)
+            // XXX reverse sentinel mapping
+            int p1 = eligiblePlayerOrdinalsPlus1[i] - 1;
+            if (p1 >= 0) // if player is in the global state
             {
-                int p2 = eligiblePlayerOrdinals[j];
-                // small graph is eligible for match
-                ugraph[i * eligibleCount + j] =
-                    // if both player says they haven't been matched
-                    !global[p1 * globalDim + p2] && !global[p2 * globalDim + p1];
+                // only need top triangle of the matrix
+                for (int j = i + 1; j < eligibleCount; j++)
+                {
+                    // XXX reverse sentinel mapping
+                    int p2 = eligiblePlayerOrdinalsPlus1[j] - 1;
+                    if (p2 >= 0) // if player is in the global state
+                    {
+                        // small graph is eligible for match
+                        ugraph[i * eligibleCount + j] =
+                            // if both player says they haven't been matched
+                            !global[p1 * globalDim + p2] && !global[p2 * globalDim + p1];
 
-                originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
+                        // for debugging
+                        originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
+                    }
+                }
             }
         }
         log[0] += ($"matching ugraph:\n{mkugraph(ugraph, eligibleCount)}. ");
@@ -440,7 +457,7 @@ public class AutoMatcher : UdonSharpBehaviour
         log[0] += ($"calculated {matchCount} matchings: {join(matching)}.");
 
         // such is udon
-        return new object[] { eligiblePlayerOrdinals, matching, matchCount, originalUgraph, log[0]};
+        return new object[] { eligiblePlayerOrdinalsPlus1, matching, matchCount, originalUgraph, log[0]};
     }
 
     // pick a random eligible pair until you can't anymore. not guaranteed to be maximal.
@@ -509,7 +526,7 @@ public class AutoMatcher : UdonSharpBehaviour
         log[0] += ($"found {n} matchable players in {mkugraph(ugraph, count)}");
         return n;
     }
-    private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount,VRCPlayerApi[] players)
+    private void SerializeMatching(int[] eligiblePlayerOrdinalsPlus1, int[] matching, int matchCount, VRCPlayerApi[] players)
     {
         int n = 0;
         byte[] buf = new byte[maxDataByteSize];
@@ -524,11 +541,13 @@ public class AutoMatcher : UdonSharpBehaviour
         for (int i = 0; i < matchCount; i++)
         {
             // turn the matches into playerIds. If it can't fit into a char, we crash. oh well.
-            char playerId1 = (char)players[eligiblePlayerOrdinals[matching[i * 2]]].playerId;
+            // XXX have to reverse the +1 encoding
+            // players should always be in the eligiblePLayerOrdinals if they're matched
+            char playerId1 = (char)players[eligiblePlayerOrdinalsPlus1[matching[i * 2]] - 1].playerId;
             buf[n++] = (byte)((playerId1 >> 8) & 0xFF);
             buf[n++] = (byte)(playerId1 & 0xFF);
 
-            char playerId2 = (char)players[eligiblePlayerOrdinals[matching[i * 2 + 1]]].playerId;
+            char playerId2 = (char)players[eligiblePlayerOrdinalsPlus1[matching[i * 2 + 1]] - 1].playerId;
             buf[n++] = (byte)((playerId2 >> 8) & 0xFF);
             buf[n++] = (byte)(playerId2 & 0xFF);
         }
