@@ -19,6 +19,11 @@ public class AutoMatcher : UdonSharpBehaviour
     // how long between each matching 
     public int MatchingDurationSeconds = 30;
 
+    // if > 0, then players will be teleported out of the matching room into the lobby and have this
+    // long before they'll be teleported back out to a room (if matchable). Sometimes nice to see
+    // everyone else between rounds.
+    public int CooldownBetweenMatchingSeconds = 0;
+
     // whether matching is calculation is enabled. instance master toggles this on once.
     public bool matchingEnabled = false;
 
@@ -302,7 +307,16 @@ public class AutoMatcher : UdonSharpBehaviour
                     VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
 
                 // teleport timer to location as visual
-                PrivateRoomTimer.StartCountdown((float)MatchingDurationSeconds);
+                if (CooldownBetweenMatchingSeconds > 0)
+                {
+                    // make countdown slightly shorter than round time
+                    PrivateRoomTimer.StartCountdown((float)(MatchingDurationSeconds - CooldownBetweenMatchingSeconds));
+                    PrivateRoomTimer.teleportAtCountdown = true;
+                } else
+                {
+                    // dont' teleport, and just let the code below teleport out once the new mathcing comes.
+                    PrivateRoomTimer.teleportAtCountdown = false;
+                }
                 PrivateRoomTimer.transform.position = p.transform.position;
                 return;
             }

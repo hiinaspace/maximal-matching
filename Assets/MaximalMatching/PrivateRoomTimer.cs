@@ -17,6 +17,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
     private bool localPlayerInRoom;
     public float countdown;
     public bool countdownActive = false;
+    public bool teleportAtCountdown = false;
 
     void Start()
     {
@@ -44,6 +45,10 @@ public class PrivateRoomTimer : UdonSharpBehaviour
                 Debug.Log($"[PrivateRoomTimer] countdown over");
                 countdownActive = false;
                 visual.text = "Wait warmly for the next round...";
+                if (teleportAtCountdown)
+                {
+                    TeleportOut();
+                }
             } else
             {
                 visual.text = $"{Mathf.RoundToInt(countdown)} seconds remaining...";
