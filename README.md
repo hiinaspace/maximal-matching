@@ -1,11 +1,6 @@
 # udon maximal matching
 
-TODO
-cache global mapping bool[] by ownership order (for display)
-
-add 'enable matching' bool to player state and UI and check in automatcher
-add 'start first matching' button for master
-
+TODO rewrite design doc, it's drifted out of date
 
 ## Design
 

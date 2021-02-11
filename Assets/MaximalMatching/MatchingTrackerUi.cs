@@ -71,7 +71,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         }
         else 
         {
-            pickup.enabled = false; // disable so they don't see phantom invisible pickup
+            pickup.pickupable = false; // disable so they don't see phantom invisible pickup
             if (Input.GetKeyDown(KeyCode.E))
             {
                 // toggle
@@ -93,6 +93,13 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         if (!MatchingTracker.started) return;
         if ((updateCooldown -= Time.deltaTime) > 0) return;
         updateCooldown = 1f;
+
+        // show indication if player hasn't got ownership yet
+        if (MatchingTracker.localPlayerState == null)
+        {
+            title.text = "Initializing, please wait warmly\n(If this persists, try rejoining.)";
+            return;
+        }
 
         var matchesRemaining = 0;
         for (int i = 0; i < 80; i++)
@@ -124,6 +131,10 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             else if (matchedWithUs)
             {
                 texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (matched with you on their end)";
+            }
+            else if (!state.matchingEnabled)
+            {
+                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (taking a break from matching)";
             }
             else
             {

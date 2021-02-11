@@ -10,6 +10,10 @@ public class MatchingTracker : UdonSharpBehaviour
     public UnityEngine.UI.Text DebugLogText;
     public UnityEngine.UI.Text DebugStateText;
     public UnityEngine.UI.Text FullStateDisplay;
+
+    // UI toggle for whether local player wants to be matched
+    public UnityEngine.UI.Toggle MatchingEnabledToggle;
+
     public GameObject PlayerStateRoot;
 
     public MatchingTrackerPlayerState[] playerStates;
@@ -24,7 +28,7 @@ public class MatchingTracker : UdonSharpBehaviour
     private float[] lastChanged = new float[LOCAL_STATE_SIZE];
     private int localStatePopulation = 0;
 
-    private MatchingTrackerPlayerState localPlayerState = null;
+    public MatchingTrackerPlayerState localPlayerState = null;
 
     // If you have more than ~20 gameobjects with UdonBehaviors with synced
     // variables enabled in the scene, some internal udon networking thing will
@@ -150,9 +154,15 @@ public class MatchingTracker : UdonSharpBehaviour
         return newKey;
     }
 
+    // called on ui change on the toggle
+    public void UpdateMatchingEnabledToggle()
+    {
+        SerializeLocalState();
+    }
+
     // deserializes all the player matching states into a (flattened) bool
     // array, indexable by owner of the player state array, and add all the
-    // live players in the `outPlayers` array.
+    // matchable (alive and willing) players in the `outPlayers` array.
     public bool[] ReadGlobalMatchingState(VRCPlayerApi[] outPlayers)
     {
         bool[] globalState = new bool[80 * 80];
@@ -164,7 +174,8 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             var state = playerStates[i];
             var owner = state.GetExplicitOwner();
-            if (owner != null)
+            // only include present players that want to be matched still
+            if (owner != null && state.matchingEnabled)
             {
                 outPlayers[i] = owner;
                 // add 1, so that 0 becomes a sentinel value for 'not here'
@@ -185,12 +196,13 @@ public class MatchingTracker : UdonSharpBehaviour
         for (int i = 0; i < 80; i++)
         {
             var state = playerStates[i];
+            var matchedIds = state.matchedPlayerIds;
             var owner = state.GetExplicitOwner();
             if (owner != null)
             {
                 for (int j = 0; j < 80; j++)
                 {
-                    var matched = state.matchedPlayerIds[j];
+                    var matched = matchedIds[j];
                     if (matched == 0) break; // done with this player
                     var ordinal = ordinalById[matched] - 1;
                     // if matched player owns a sync object
@@ -245,7 +257,8 @@ public class MatchingTracker : UdonSharpBehaviour
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
         string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
-            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\nplayerState=";
+            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\n" +
+            $"localPlayerState={localPlayerState}\n";
         for (int i = 0; i < playerStates.Length; i++)
         {
             if ((i % 4) == 0) s += "\n";
@@ -276,14 +289,16 @@ public class MatchingTracker : UdonSharpBehaviour
             {
                 names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
                 s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
+                for (int j = 0; j < 80; j++)
+                {
+                    s += i == j ? "\\" : 
+                        (players[j] == null ? " " : (globalState[i * 80 + j] ? "✓" : "."));
+                }
             }
             else
             {
                 s += "                "; // 16 spaces
-            }
-            for (int j = 0; j < 80; j++)
-            {
-                s += i == j ? "\\" : globalState[i * 80 + j] ? "✓" : ".";
+                s += "                                                                                "; // 80 spaces
             }
             s += "\n";
         }
@@ -396,9 +411,10 @@ public class MatchingTracker : UdonSharpBehaviour
         SerializeLocalState();
     }
 
-    // set our local player state object from the hash map
+    // set our local player state object from the hash map and UI
     private void SerializeLocalState()
     {
+        var localMatchingEnabled = MatchingEnabledToggle.isOn;
         VRCPlayerApi[] players = GetActivePlayers();
         var playerCount = players.Length;
 
@@ -415,7 +431,8 @@ public class MatchingTracker : UdonSharpBehaviour
                 matchedPlayerIds[matchCount++] = player.playerId;
             }
         }
-        localPlayerState.SerializeLocalState(matchedPlayerIds, matchCount);
+        localPlayerState.SerializeLocalState(matchedPlayerIds, matchCount, localMatchingEnabled);
+        Log($"wrote local state to sync object matchedIds={join(matchedPlayerIds)} count={matchCount} matchingEnabled={localMatchingEnabled}");
     }
 
     // get players stripped of the weird null players that

@@ -237,7 +237,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: localPlayerStillHere
+      Data: localPlayerInRoom
     - Name: $v
       Entry: 7
       Data: 14|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -264,10 +264,10 @@ MonoBehaviour:
       Data: SystemBoolean
     - Name: symbolOriginalName
       Entry: 1
-      Data: localPlayerStillHere
+      Data: localPlayerInRoom
     - Name: symbolUniqueName
       Entry: 1
-      Data: localPlayerStillHere
+      Data: localPlayerInRoom
     - Name: symbolDefaultValue
       Entry: 6
       Data: 

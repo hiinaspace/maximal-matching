@@ -61,14 +61,16 @@ namespace Tests
                 }
 
                 //Debug.Log($"playerIds: {string.Join(",", playerIds)}");
-                var bytes = MatchingTrackerPlayerState.serializeBytes(i, playerIds);
+                var matchingEnabled = UnityEngine.Random.value > 0.5f;
+                var bytes = MatchingTrackerPlayerState.serializeBytes(i, playerIds, matchingEnabled);
                 var frame = MatchingTrackerPlayerState.SerializeFrame(bytes);
                 var deframe = MatchingTrackerPlayerState.DeserializeFrame(new string(frame));
                 Assert.That(deframe, Is.EqualTo(bytes));
-                var deser = MatchingTrackerPlayerState.deserializeBytes(deframe);
+                int[] deser = new int[80];
+                var deserMatchingEnabled = MatchingTrackerPlayerState.deserializeBytes(deframe, deser);
                 Assert.That(deser, Is.EqualTo(playerIds));
+                Assert.That(deserMatchingEnabled, Is.EqualTo(matchingEnabled));
             }
-
         }
 
 

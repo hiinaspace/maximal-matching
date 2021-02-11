@@ -49,25 +49,35 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
         ownerId = player.playerId;
     }
 
-    // base64-encoded list of 10-bit player ids that have been matched with the owner.
+    // 7bit encoding of:
+    // 1 byte bool `matchingEnabled
+    // 80 x 10-bit player ids that have been matched with this object's owner,
+    //    "0 terminated" in that once you get a 0 player id (invalid) you can stop reading.
+    // XXX: weird udon behavior: if you change the name of this variable from `matchingState` to 
+    // just `state`, then udon will fail to serialize this with some sort of outOfBounds exception.
+    // so, uh, don't change the variable name.
     [UdonSynced] public string matchingState = "";
 
     // cache local view of state for efficiency
 
+    // whether this gameobject's owner has matching enabled locally
+    public bool matchingEnabled = false;
+
     // ids of players the owner of this state has been matched with before.
     // XXX is a 80-element array that's "0 terminated" (player id 0 never happens) for
     // some clarity in the serialization procedures.
-    public int[] matchedPlayerIds;
+    public int[] matchedPlayerIds = new int[80];
 
     // quick access if the owner of this state has been matched with Networking.LocalPlayer
     public bool matchedWithLocalPlayer;
 
-    public void SerializeLocalState(int[] newMatchedPlayerIds, int matchCount)
+    public void SerializeLocalState(int[] newMatchedPlayerIds, int matchCount, bool newMatchingEnabled)
     {
         matchedPlayerIds = newMatchedPlayerIds;
         // we are the local player
         matchedWithLocalPlayer = false;
-        byte[] buf = serializeBytes(matchCount, matchedPlayerIds);
+        matchingEnabled = newMatchingEnabled;
+        byte[] buf = serializeBytes(matchCount, matchedPlayerIds, newMatchingEnabled);
         matchingState = new string(SerializeFrame(buf));
     }
 
@@ -75,7 +85,8 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
     public override void OnDeserialization()
     {
         byte[] playerList = DeserializeFrame(matchingState);
-        matchedPlayerIds = deserializeBytes(playerList);
+        int[] matchedPlayerIds = new int[80];
+        matchingEnabled = deserializeBytes(playerList, matchedPlayerIds);
         var localId = Networking.LocalPlayer.playerId;
 
         matchedWithLocalPlayer = false;
@@ -94,16 +105,19 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
     // XXX could go from 10bit numbers to 7bit chars in a single method. was
     // lazy and ended up splitting them like this.
 
+    // deserialize into `outMatchedPlayers` and return whether matching enabled.
+    // XXX someday udonsharp will have out params.
     public 
 #if !COMPILER_UDONSHARP
         static
 #endif
-        int[] deserializeBytes(byte[] bytes)
+        bool deserializeBytes(byte[] bytes, int[] outMatchedPlayers)
     {
+        bool matchingEnabled = bytes[0] > 0;
         // 10 bits per player
-        int[] matchedPlayers = new int[80];
+        int[] matchedPlayers = outMatchedPlayers;
         // deserialize 5 bytes int 4 player ids
-        for (int j = 0, k = 0; k < 80; j += 5, k += 4)
+        for (int j = 1, k = 0; k < 80; j += 5, k += 4)
         {
             int a = bytes[j];
             int b = bytes[j+1];
@@ -117,19 +131,20 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
             if (matchedPlayers[k + 3] == 0) break;
         }
         //Log($"deserialized matched players: {join(matchedPlayers)}");
-        return matchedPlayers;
+        return matchingEnabled;
     }
 
     public 
 #if !COMPILER_UDONSHARP
         static
 #endif
-        byte[] serializeBytes(int matchCount, int[] matchedPlayerIds)
+        byte[] serializeBytes(int matchCount, int[] matchedPlayerIds, bool matchingEnabled)
     {
         byte[] buf = new byte[maxDataByteSize];
+        buf[0] = matchingEnabled ? (byte)1 : (byte)0;
         // serialize 4 10bit player ids into 5 bytes
         // TODO could go from 7 10bit player ids into 10 chars directly.
-        for (int j = 0, k = 0; j < matchCount; j += 4, k += 5)
+        for (int j = 0, k = 1; j < matchCount; j += 4, k += 5)
         {
             int a = matchedPlayerIds[j];
             int b = matchedPlayerIds[j+1];

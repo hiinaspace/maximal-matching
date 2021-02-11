@@ -14,17 +14,16 @@ namespace Tests
         {
             var ret = AutoMatcher.CalculateMatching(
                 new int[] { 1, 2, 3 },
-                new int[] { 1, 2, 3 },
                 new bool[] { O, _, _,
                              _, O, _,
                              _, _, O },
                 3);
 
-            int[] eligiblePlayerOrdinalsPlus1 = (int[])ret[0];
+            int[] playerIdsByMatchingOrdinal = (int[])ret[0];
             int[] matching = (int[])ret[1];
             int matchCount = (int)ret[2];
 
-            Assert.That(eligiblePlayerOrdinalsPlus1, Is.EqualTo(new int[] { 1, 2, 3 }));
+            Assert.That(playerIdsByMatchingOrdinal, Is.EqualTo(new int[] { 1, 2, 3 }));
             Assert.That(matching, 
                 Is.EqualTo(new int[] { 0, 1  })
                 .Or.EqualTo(new int[] { 1, 2 })
@@ -41,16 +40,15 @@ namespace Tests
         {
             var ret = AutoMatcher.CalculateMatching(
                 new int[] { 1, 2},
-                new int[] { 1, 2},
                 new bool[] { O, _,
                              _, O },
                 2);
 
-            int[] eligiblePlayerOrdinalsPlus1 = (int[])ret[0];
+            int[] playerIdsByMatchingOrdinal = (int[])ret[0];
             int[] matching = (int[])ret[1];
             int matchCount = (int)ret[2];
 
-            Assert.That(eligiblePlayerOrdinalsPlus1, Is.EqualTo(new int[] { 1, 2 }));
+            Assert.That(playerIdsByMatchingOrdinal, Is.EqualTo(new int[] { 1, 2 }));
             Assert.That(matching, 
                 Is.EqualTo(new int[] { 0, 1 })
                 .Or.EqualTo(new int[] { 1, 0 })
@@ -63,7 +61,6 @@ namespace Tests
         public void AutoMatcherTest2PlayersGap()
         {
             var ret = AutoMatcher.CalculateMatching(
-                new int[] { 1, 2 },
                 new int[] { 1, 0, 2 },
                 // ordinal 1 is a gap, 1 and 2 should be matchable
                 new bool[] { O, O, _ ,
@@ -71,13 +68,13 @@ namespace Tests
                              _, O, O},
                 3);
 
-            int[] eligiblePlayerOrdinalsPlus1 = (int[])ret[0];
+            int[] playerIdsByMatchingOrdinal = (int[])ret[0];
             int[] matching = (int[])ret[1];
             int matchCount = (int)ret[2];
             string log = (string)ret[4];
             Debug.Log(log);
 
-            Assert.That(eligiblePlayerOrdinalsPlus1, Is.EqualTo(new int[] { 1, 3 }));
+            Assert.That(playerIdsByMatchingOrdinal, Is.EqualTo(new int[] { 1, 2, 0 }));
             Assert.That(matchCount, Is.EqualTo(1));
             Assert.That(matching, 
                 Is.EqualTo(new int[] { 0, 1 })
@@ -91,14 +88,8 @@ namespace Tests
         {
             for (int n = 0; n < 100; n++)
             {
-                var eligiblePlayerIds = new int[UnityEngine.Random.Range(0, 80)];
-                for (int i = 0; i < eligiblePlayerIds.Length; i++)
-                {
-                    eligiblePlayerIds[i] = i + 1;
-                }
-
                 var playerIdsByGlobalOrdinal = new int[80];
-                for (int i = 0; i < eligiblePlayerIds.Length; i++)
+                for (int i = 0; i < 80; i++)
                 {
                     // simulate players not having sync objects yet
                     if (UnityEngine.Random.value > 0.9)
@@ -127,7 +118,6 @@ namespace Tests
                 }
 
                 var ret = AutoMatcher.CalculateMatching(
-                    eligiblePlayerIds,
                     playerIdsByGlobalOrdinal,
                     global,
                     80);
