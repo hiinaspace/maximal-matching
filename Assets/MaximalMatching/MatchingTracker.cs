@@ -258,7 +258,7 @@ public class MatchingTracker : UdonSharpBehaviour
         debugStateCooldown = 1f;
         string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
             $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\n" +
-            $"localPlayerState={localPlayerState}\n";
+            $"localPlayerState={(localPlayerState == null ? "null" : localPlayerState.gameObject.name)}\n";
         for (int i = 0; i < playerStates.Length; i++)
         {
             if ((i % 4) == 0) s += "\n";
