@@ -264,7 +264,8 @@ public class MatchingTracker : UdonSharpBehaviour
             if ((i % 4) == 0) s += "\n";
             MatchingTrackerPlayerState playerState = playerStates[i];
             var o = playerState.GetExplicitOwner();
-            s += $"[{i}]=[{(o == null ? "" : GetDisplayName(o))}]:{playerState.ownerId} ";
+            var sinceDeser = Time.time - playerState.lastDeserialization;
+            s += $"[{i}]=[{(o == null ? "" : GetDisplayName(o))}]:{playerState.ownerId}:{sinceDeser:00.} ";
         }
         s += $"\nlocalPop={localStatePopulation} localPlayerid={Networking.LocalPlayer.playerId}";
         DebugStateText.text = s;
@@ -489,7 +490,15 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             toDisable.gameObject.SetActive(false);
         }
-        playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length].gameObject.SetActive(true);
+        var toEnable = playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length];
+
+        toEnable.gameObject.SetActive(true);
+        // XXX try to retrigger deserialization; I don't think it fires when it should.
+        if ((Time.time - toEnable.lastDeserialization) > 4)
+        {
+            toEnable.OnDeserialization();
+        }
+
         enabledCursor = (enabledCursor + 1) % playerStates.Length;
     }
 

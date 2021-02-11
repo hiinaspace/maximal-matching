@@ -71,6 +71,8 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
     // quick access if the owner of this state has been matched with Networking.LocalPlayer
     public bool matchedWithLocalPlayer;
 
+    public float lastDeserialization;
+
     public void SerializeLocalState(int[] newMatchedPlayerIds, int matchCount, bool newMatchingEnabled)
     {
         matchedPlayerIds = newMatchedPlayerIds;
@@ -84,10 +86,15 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
     // called when udon sets the UdonSynced variables from the network.
     public override void OnDeserialization()
     {
+        if (matchingState.Length == 0) return;
+        lastDeserialization = Time.time;
+
+        //Debug.Log($"OnDeserialization fired for {gameObject.name}");
         byte[] playerList = DeserializeFrame(matchingState);
-        int[] matchedPlayerIds = new int[80];
-        matchingEnabled = deserializeBytes(playerList, matchedPlayerIds);
+        int[] newMatchedPlayerIds = new int[80];
+        matchingEnabled = deserializeBytes(playerList, newMatchedPlayerIds);
         var localId = Networking.LocalPlayer.playerId;
+        matchedPlayerIds = newMatchedPlayerIds;
 
         matchedWithLocalPlayer = false;
         foreach (var id in matchedPlayerIds)
