@@ -40,6 +40,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
     {
         if (countdownActive)
         {
+            visual.text = $"{Mathf.RoundToInt(countdown)} seconds remaining...";
             if ((countdown -= Time.deltaTime) < 0)
             {
                 Debug.Log($"[PrivateRoomTimer] countdown over");
@@ -49,10 +50,11 @@ public class PrivateRoomTimer : UdonSharpBehaviour
                 {
                     TeleportOut();
                 }
-            } else
-            {
-                visual.text = $"{Mathf.RoundToInt(countdown)} seconds remaining...";
             }
+        }
+        else
+        {
+            visual.text = "";
         }
     }
 

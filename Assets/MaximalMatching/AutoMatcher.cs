@@ -315,6 +315,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 } else
                 {
                     // dont' teleport, and just let the code below teleport out once the new mathcing comes.
+                    PrivateRoomTimer.StartCountdown(MatchingDurationSeconds);
                     PrivateRoomTimer.teleportAtCountdown = false;
                 }
                 PrivateRoomTimer.transform.position = p.transform.position;
