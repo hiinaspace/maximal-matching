@@ -114,8 +114,8 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 var minutes = seconds / 60f;
                 var hours = minutes / 60f;
                 texts[i].text = $"{MatchingTracker.GetDisplayName(p)} " +
-                    (hours > 1 ? $"({Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes):D2} ago)" :
-                    minutes > 1 ? $"({Mathf.FloorToInt(minutes):D2} seconds ago)" :
+                    (hours > 1 ? $"({Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes) % 60:D2} ago)" :
+                    minutes > 1 ? $"({Mathf.FloorToInt(minutes):D2} minutes ago)" :
                     $"({Mathf.FloorToInt(seconds):D2} seconds ago)");
             }
             else

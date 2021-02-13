@@ -148,7 +148,7 @@ public class AutoMatcher : UdonSharpBehaviour
             float seconds = PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching;
             float minutes = seconds / 60;
             CountdownText.text =
-                $"Next matching in {minutes:00}:{seconds:00}";
+                $"Next matching in {minutes:00}:{seconds % 60:00}";
         }
     }
 
