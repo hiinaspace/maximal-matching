@@ -43,7 +43,13 @@ public class MatchingTracker : UdonSharpBehaviour
     const int MAX_ACTIVE_GAMEOBJECTS = 10;
     private int enabledCursor = 0;
 
-    // only attempt to take ownership every few seconds.
+    // since udon has no easy per-player arbitrary synced state,
+    // each player needs to own a MatchingTrackerPlayerState gameobject.
+    // MaintainLocalOwnership uses exponential backoff to try to avoid contention;
+    // experimentally, this worked well up to about a 50% "load factor" of players
+    // to number of MatchingTrackerPlayerState gameobjects. For the max 80 players,
+    // I think you'd probably want at least 100 (0.8 load factor) total
+    private int ownershipAttempts = 0;
     private float takeOwnershipAttemptCooldown = -1;
     private float releaseOwnershipAttemptCooldown = -1;
 
@@ -56,6 +62,13 @@ public class MatchingTracker : UdonSharpBehaviour
         playerStates = PlayerStateRoot.GetComponentsInChildren<MatchingTrackerPlayerState>(includeInactive: true);
         Log($"Start MatchingTracker");
         started = true;
+
+        // the more players in the instnace, the longer it'll take for the
+        // initial sync; save some effort and retries by backing off trying to
+        // take ownership based on player count (20 seconds for a full
+        // instnace). XXX the playercount might not actually be initialized yet in
+        // start(); it'll still be fine if it isn't though.
+        takeOwnershipAttemptCooldown = VRCPlayerApi.GetPlayerCount() / 4f;
     }
 
     public string GetDisplayName(VRCPlayerApi player)
@@ -286,7 +299,8 @@ public class MatchingTracker : UdonSharpBehaviour
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
         string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
-            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\nplayerState=";
+            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown} " +
+            $"ownershipAttempts={ownershipAttempts}\nplayerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
             if ((i % 4) == 0) s += "\n";
@@ -333,6 +347,8 @@ public class MatchingTracker : UdonSharpBehaviour
         FullStateDisplay.text = s;
     }
 
+    private float lastTakeOwnershipAttempt;
+
     // maintain ownership of exactly one of the MatchingTrackerPlayerState gameobjects
     private void MaintainLocalOwnership()
     {
@@ -341,27 +357,55 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             if ((takeOwnershipAttemptCooldown -= Time.deltaTime) < 0)
             {
-                // try again after a bit.
-                takeOwnershipAttemptCooldown = UnityEngine.Random.Range(1f, 2f);
-                Log($"no owned MatchingTrackerPlayerState, scanning for an unowned one");
-                foreach (var playerState in playerStates)
+                // exponentially backoff the next attempt to take ownership, capped at 30 seconds.
+                ownershipAttempts++;
+                takeOwnershipAttemptCooldown = 
+                    Mathf.Min(30f, UnityEngine.Random.Range(1f, Mathf.Pow(2, ownershipAttempts)));
+
+                // start scanning at a hash of our display name to distribute players across the sync objects,
+                // with linear probing on collision.
+                // note that there will still be contention as the loading factor (number of players vs
+                // total number of sync objects) increases. For an 80 person instance to actually converge,
+                // you'll probably need to have around 100 sync gameobjects total.
+                var playerName = GetDisplayName(Networking.LocalPlayer);
+                int playerStateCount = playerStates.Length;
+                var end = Mathf.Abs(playerName.GetHashCode()) % playerStateCount;
+
+                Log($"{playerName} doesn't own MatchingTrackerPlayerState, attempt {ownershipAttempts} scanning at {end}," +
+                    $" cooldown {takeOwnershipAttemptCooldown}");
+
+                // first scan if we got ownership from our last attempt
+                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
                 {
+                    MatchingTrackerPlayerState playerState = playerStates[i];
+                    // skip uninitialized states
+                    if (!playerState.IsInitialized()) continue;
+
+                    var owner = playerState.GetExplicitOwner();
+                    if (owner != null && owner.playerId == localPlayerId)
+                    {
+                        Log($"{playerName} found ownership of {playerState.name} after {Time.time - lastTakeOwnershipAttempt} seconds," +
+                            $" setting localPlayerState");
+                        localPlayerState = playerState;
+                        return;
+                    }
+                }
+
+                // else, scan for an unowned one and attempt.
+                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
+                {
+                    MatchingTrackerPlayerState playerState = playerStates[i];
                     // skip uninitialized states
                     if (!playerState.IsInitialized()) continue;
 
                     var owner = playerState.GetExplicitOwner();
                     if (owner == null)
                     {
-                        Log($"taking ownership {playerState.gameObject.name}, cooldown {takeOwnershipAttemptCooldown}");
+                        Log($"{playerName} taking ownership {playerState.gameObject.name}, cooldown {takeOwnershipAttemptCooldown}");
                         playerState.gameObject.SetActive(true);
                         playerState.TakeExplicitOwnership();
-                        break;
-                    }
-                    else if (owner.playerId == localPlayerId)
-                    {
-                        Log($"found ownership of {playerState.name}, setting localPlayerState");
-                        localPlayerState = playerState;
-                        break;
+                        lastTakeOwnershipAttempt = Time.time;
+                        return;
                     }
                 }
             }
