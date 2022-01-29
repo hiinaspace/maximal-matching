@@ -1,5 +1,23 @@
 # udon maximal matching
 
+rough TODO:
+- modernize:
+  - replace Update() busy loops with the new udon delay mechanism
+  - replace continuous sync with manual requested sync
+    - remove flickering of state gameobjects
+  - replace bitpacking with regular arrays
+- add master settings UI
+  - make timers configurable with basic UI
+- fix playerstate contention
+  - quadratically probe a new player state
+  - use the ownership callback to prevent stealing
+  - add a few more (20 more?) gameobjects so 80 players isn't 100% capacity
+- implement new matching variants
+  - rapid untracked matching
+  - random group match
+  - recess
+- replace behind-head menu with double-tap joysticks
+
 TODO rewrite design doc, it's drifted out of date
 
 ## Design
