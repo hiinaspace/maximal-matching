@@ -7,6 +7,7 @@ using VRC.Udon;
 
 // visual indication if one of the other scripts stops running update()
 // presumably because of a crash
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class CrashWatchdog : UdonSharpBehaviour
 {
     public GameObject visualOnCrash;

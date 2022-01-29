@@ -8,6 +8,7 @@ using VRC.Udon;
 /// Tracks a set of VRCPlayerApi objects that are currently in the collider on
 /// this gameobject, as well as the last time any player entered or left.
 /// </summary>
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class OccupantTracker : UdonSharpBehaviour
 {
     // last change unity timestamps

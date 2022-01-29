@@ -12,20 +12,26 @@ public class AutoMatcher : UdonSharpBehaviour
     public UnityEngine.UI.Text FullStateDisplay;
     public UnityEngine.UI.Text CountdownText;
 
+    public UnityEngine.UI.Slider MatchingDurationSlider;
+    public UnityEngine.UI.Slider BreakDurationSlider;
+    public UnityEngine.UI.Text MatchingDurationText;
+    public UnityEngine.UI.Text BreakDurationText;
+    public UnityEngine.UI.Text MasterIndicator;
+
     public MatchingTracker MatchingTracker;
     public OccupantTracker LobbyZone;
     public PrivateRoomTimer PrivateRoomTimer;
     public GameObject PrivateZoneRoot;
 
     // how long in the private room until it teleports you back 
-    public float PrivateRoomTime = 15f;
+    [UdonSynced]
+    public float MatchingDuration = 15f;
 
     // how long between the end of the private room time and the next matching.
-    // currently needs to be long enough for the players to get teleported back into the lobby
-    // from the private rooms.
-    // TODO could change the eligible players for matching to include those in the private rooms,
-    // thus players in the private rooms will seamlessly get teleported around to the next round.
-    public float BetweenRoundTime = 10f;
+    // needs to be long enough for all players to get teleported back into the lobby
+    // from the private rooms, or there will be no one to match
+    [UdonSynced]
+    public float BreakDuration = 10f;
 
     // time until the first round starts after players initially enter the zone,
     // so don't have to wait a full round time to start.
@@ -120,11 +126,13 @@ public class AutoMatcher : UdonSharpBehaviour
         // if we have done another matching before, wait the full time for the next round
         // TODO could somehow detect if everyone has left the private rooms and shorten, since there's
         // nobody to wait for
-        if (Networking.IsMaster && matchEpoch != 0 && timeSinceLastSeenMatching > (PrivateRoomTime + BetweenRoundTime))
+        if (Networking.IsMaster && matchEpoch != 0 && timeSinceLastSeenMatching > (MatchingDuration + BreakDuration))
         {
             Log($"ready for new matching");
             WriteMatching(LobbyZone.GetOccupants());
         }
+
+        UpdateUi();
 
         UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastSeenMatching);
         DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
@@ -141,6 +149,44 @@ public class AutoMatcher : UdonSharpBehaviour
         }
     }
 
+    public void UpdateUi()
+    {
+        if (Networking.IsMaster) 
+        {
+            if (MatchingDurationSlider.value != MatchingDuration)
+            {
+                float slide = MatchingDurationSlider.value;
+                // use precise seconds below 2 minutes, otherwise round to 30 second intervals
+                MatchingDuration = slide > 120 ?  Mathf.Round(slide / 30f) * 30 : slide;
+
+                MatchingDurationText.text = MatchingDuration > 120 ?
+                    $"{Mathf.RoundToInt(MatchingDuration / 30f) / 2f} minutes" :
+                    $"{Mathf.RoundToInt(MatchingDuration)} seconds";
+            }
+            if (BreakDurationSlider.value != BreakDuration)
+            {
+                BreakDuration = BreakDurationSlider.value;
+                BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
+            }
+        }
+        else
+        {
+            if (MatchingDuration != MatchingDurationSlider.value)
+            {
+                MatchingDurationSlider.value = MatchingDuration;
+                MatchingDurationText.text = MatchingDuration > 120 ?
+                    $"{Mathf.RoundToInt(MatchingDuration / 60f)} minutes" :
+                    $"{Mathf.RoundToInt(MatchingDuration)} seconds";
+            }
+            if (BreakDuration != BreakDurationSlider.value)
+            {
+                BreakDurationSlider.value = BreakDuration;
+                BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
+            }
+        }
+        MasterIndicator.text = $"(Only master ${Networking.GetOwner(gameObject).displayName} can change)";
+    }
+
     private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
     {
         if (matchEpoch == 0)
@@ -151,7 +197,7 @@ public class AutoMatcher : UdonSharpBehaviour
         }
         else
         {
-            float seconds = PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching;
+            float seconds = MatchingDuration + BreakDuration - timeSinceLastSeenMatching;
             float minutes = seconds / 60;
             CountdownText.text =
                 $"Next matching in {minutes:00}:{seconds % 60:00}";
@@ -167,12 +213,12 @@ public class AutoMatcher : UdonSharpBehaviour
         debugStateCooldown = 1f;
         var countdown = matchEpoch == 0 ?
             (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
-            $"{(PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching)} seconds";
+            $"{(MatchingDuration + BreakDuration - timeSinceLastSeenMatching)} seconds";
 
         DebugStateText.text = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster}\n" +
             $"countdown to next matching: {countdown}\n" +
             $"timeSinceLobbyReady={timeSinceLobbyReady} lobbyReady={lobbyReady}\n" +
-            $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {PrivateRoomTime + BetweenRoundTime} since last successful matching)\n" +
+            $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {MatchingDuration + BreakDuration} since last successful matching)\n" +
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
@@ -304,7 +350,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 // avoid lerping (apparently on by default)
                 Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
                     VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-                PrivateRoomTimer.StartCountdown(PrivateRoomTime);
+                PrivateRoomTimer.StartCountdown(MatchingDuration);
                 // teleport timer to location too as visual.
                 PrivateRoomTimer.transform.position = p.transform.position;
                 return;

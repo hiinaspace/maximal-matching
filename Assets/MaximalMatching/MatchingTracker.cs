@@ -5,6 +5,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MatchingTracker : UdonSharpBehaviour
 {
     public UnityEngine.UI.Text DebugLogText;

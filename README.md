@@ -1,8 +1,6 @@
 # udon maximal matching
 
 rough TODO:
-- add master settings UI
-  - make timers configurable with basic UI
 - fix playerstate contention
   - quadratically probe a new player state
   - use the ownership callback to prevent stealing

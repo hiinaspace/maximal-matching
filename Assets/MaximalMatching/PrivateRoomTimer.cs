@@ -7,6 +7,7 @@ using VRC.Udon;
 // Teleports local player to the point after the countdown 
 // ends. AutoMatcher uses this to boot players out of the rooms
 // after the matching.
+[UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class PrivateRoomTimer : UdonSharpBehaviour
 {
     // root/parent of a bunch of places to teleport the player to after the countdown.
@@ -56,7 +57,9 @@ public class PrivateRoomTimer : UdonSharpBehaviour
                 }
             }
         }
-        visual.text = countdownActive ? $"{Mathf.RoundToInt(countdown)} seconds remaining..." : "";
+        visual.text = countdownActive ? 
+            $"{Mathf.RoundToInt(countdown / 60)}:{Mathf.RoundToInt(Mathf.Repeat(countdown, 60))} remaining..." :
+            "";
     }
 
     public void TeleportOut()
