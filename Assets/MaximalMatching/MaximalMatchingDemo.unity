@@ -609,6 +609,11 @@ PrefabInstance:
         type: 2}
     - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
         type: 3}
+      propertyPath: unityVersion
+      value: 2019.4.31f1
+      objectReference: {fileID: 0}
+    - target: {fileID: 6759095419728963412, guid: 8894fa7e4588a5c4fab98453e558847d,
+        type: 3}
       propertyPath: ReferenceCamera
       value: 
       objectReference: {fileID: 2084709014}
@@ -1052,6 +1057,25 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 3373559732191842629}
   m_PrefabAsset: {fileID: 0}
+--- !u!1 &1889729975 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1094421957795851142, guid: 8894fa7e4588a5c4fab98453e558847d,
+    type: 3}
+  m_PrefabInstance: {fileID: 630113448}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &1889729980
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1889729975}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 229740497, guid: 4ecd63eff847044b68db9453ce219299, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  contentType: 1
 --- !u!1 &2084709014
 GameObject:
   m_ObjectHideFlags: 0
@@ -1544,11 +1568,6 @@ PrefabInstance:
       value: 3
       objectReference: {fileID: 0}
     - target: {fileID: 4552575057188901945, guid: b643afbb8daf6cc458bff969bbac15fe,
-        type: 3}
-      propertyPath: _syncMethod
-      value: 3
-      objectReference: {fileID: 0}
-    - target: {fileID: 4564501294382375195, guid: b643afbb8daf6cc458bff969bbac15fe,
         type: 3}
       propertyPath: _syncMethod
       value: 3

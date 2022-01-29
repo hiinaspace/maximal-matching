@@ -39,10 +39,10 @@ public class PrivateRoomTimer : UdonSharpBehaviour
     }
     public void SlowUpdate()
     {
-        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1.09f);
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1f);
         if (countdownActive)
         {
-            if ((countdown -= Time.deltaTime) < 0)
+            if ((countdown -= 1) < 0)
             {
                 countdownActive = false;
                 // only teleport if the player is still in the room.
@@ -58,7 +58,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
             }
         }
         visual.text = countdownActive ? 
-            $"{Mathf.RoundToInt(countdown / 60)}:{Mathf.RoundToInt(Mathf.Repeat(countdown, 60))} remaining..." :
+            $"{Mathf.RoundToInt(countdown / 60):00}:{Mathf.RoundToInt(Mathf.Repeat(countdown, 60)):00} remaining..." :
             "";
     }
 

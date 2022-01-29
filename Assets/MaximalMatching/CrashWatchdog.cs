@@ -16,7 +16,7 @@ public class CrashWatchdog : UdonSharpBehaviour
 
     void Start()
     {
-        SlowUpdate();
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 5.01f);
     }
 
     public void SlowUpdate()

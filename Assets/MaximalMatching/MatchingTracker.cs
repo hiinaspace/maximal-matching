@@ -1,4 +1,4 @@
-﻿#define NO_LOCAL_TEST_PLAYERIDS
+﻿#define NOLOCAL_TEST_PLAYERIDS
 
 using UdonSharp;
 using UnityEngine;
@@ -33,8 +33,8 @@ public class MatchingTracker : UdonSharpBehaviour
     // to number of MatchingTrackerPlayerState gameobjects. For the max 80 players,
     // I think you'd probably want at least 100 (0.8 load factor) total
     private int ownershipAttempts = 0;
-    private float takeOwnershipAttemptCooldown = -1;
-    private float releaseOwnershipAttemptCooldown = -1;
+    private float nextOwnershipAttempt = -1;
+    private float nextReleaseAttempt = -1;
 
     private float broadcastCooldown = -1;
 
@@ -45,15 +45,11 @@ public class MatchingTracker : UdonSharpBehaviour
         playerStates = PlayerStateRoot.GetComponentsInChildren<MatchingTrackerPlayerState>(includeInactive: true);
         Log($"Start MatchingTracker");
         started = true;
-
-        // the more players in the instnace, the longer it'll take for the
-        // initial sync; save some effort and retries by backing off trying to
-        // take ownership based on player count (20 seconds for a full
-        // instnace). XXX the playercount might not actually be initialized yet in
-        // start(); it'll still be fine if it isn't though.
-        takeOwnershipAttemptCooldown = VRCPlayerApi.GetPlayerCount() / 4f;
-
         SlowUpdate();
+        if (Networking.LocalPlayer == null) return;
+        // wait a bit for initial sync
+        SendCustomEventDelayedSeconds(nameof(MaintainLocalOwnership), 5f);
+        BroadcastLocalState();
     }
 
     public string GetDisplayName(VRCPlayerApi player)
@@ -244,34 +240,14 @@ public class MatchingTracker : UdonSharpBehaviour
         return matchedPlayers;
     }
 
-    private float debugStateCooldown = -1;
-
     // crash watchdog
     public float lastUpdate;
-
-    // periodically try to initialize. While it'd be nice to run this in Start()
-    // I'm not sure if Networking.IsMaster will return true in Start() even if you are the master
-    // so redo it just to be sure.
-    private float lastInitializeCheck = 0;
-    private void InitializePlayerStates()
-    {
-        if (!Networking.IsMaster) return;
-        if ((lastInitializeCheck -= Time.deltaTime) > 0) return;
-        lastInitializeCheck = 10f;
-        foreach (var playerState in playerStates)
-        {
-            if (!playerState.IsInitialized()) playerState.Initialize();
-        }
-    }
 
     public void SlowUpdate()
     {
         SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1);
         lastUpdate = Time.time;
         if (Networking.LocalPlayer == null) return;
-        InitializePlayerStates();
-        MaintainLocalOwnership();
-        BroadcastLocalState();
         DebugState();
     }
 
@@ -279,11 +255,8 @@ public class MatchingTracker : UdonSharpBehaviour
     {
         // skip update if debug text is off
         if (!DebugLogText.gameObject.activeInHierarchy) return;
-
-        if ((debugStateCooldown -= Time.deltaTime) > 0) return;
-        debugStateCooldown = 1f;
-        string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
-            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown} " +
+        string s = $"{System.DateTime.Now} {Time.time} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} \n" +
+            $"broadcast={broadcastCooldown} releaseAttempt={nextReleaseAttempt} takeAttempt={nextOwnershipAttempt} " +
             $"ownershipAttempts={ownershipAttempts}\nplayerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
@@ -296,7 +269,6 @@ public class MatchingTracker : UdonSharpBehaviour
         DebugStateText.text = s;
 
         DisplayFullState();
-
     }
 
     private void DisplayFullState()
@@ -331,66 +303,55 @@ public class MatchingTracker : UdonSharpBehaviour
         FullStateDisplay.text = s;
     }
 
-    private float lastTakeOwnershipAttempt;
-
     // maintain ownership of exactly one of the MatchingTrackerPlayerState gameobjects
-    private void MaintainLocalOwnership()
+    public void MaintainLocalOwnership()
     {
         var localPlayerId = Networking.LocalPlayer.playerId;
         if (localPlayerState == null)
         {
-            if ((takeOwnershipAttemptCooldown -= Time.deltaTime) < 0)
+            // exponentially backoff the next attempt to take ownership, capped at 30 seconds.
+            ownershipAttempts++;
+            float delay = Mathf.Min(30f, UnityEngine.Random.Range(1f, Mathf.Pow(2, ownershipAttempts)));
+            SendCustomEventDelayedSeconds(nameof(MaintainLocalOwnership), delay);
+            nextOwnershipAttempt = Time.time + delay;
+
+            // start scanning at a hash of our display name to distribute players across the sync objects,
+            // with linear probing on collision.
+            // note that there will still be contention as the loading factor (number of players vs
+            // total number of sync objects) increases. For an 80 person instance to actually converge,
+            // you'll probably need to have around 100 sync gameobjects total.
+            var playerName = GetDisplayName(Networking.LocalPlayer);
+            int playerStateCount = playerStates.Length;
+            var end = Mathf.Abs(playerName.GetHashCode()) % playerStateCount;
+
+            Log($"{playerName} doesn't own MatchingTrackerPlayerState, attempt {ownershipAttempts} scanning at {end}," +
+                $" cooldown {Time.time - nextOwnershipAttempt}");
+
+            // first scan if we got ownership from our last attempt
+            for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
             {
-                // exponentially backoff the next attempt to take ownership, capped at 30 seconds.
-                ownershipAttempts++;
-                takeOwnershipAttemptCooldown = 
-                    Mathf.Min(30f, UnityEngine.Random.Range(1f, Mathf.Pow(2, ownershipAttempts)));
-
-                // start scanning at a hash of our display name to distribute players across the sync objects,
-                // with linear probing on collision.
-                // note that there will still be contention as the loading factor (number of players vs
-                // total number of sync objects) increases. For an 80 person instance to actually converge,
-                // you'll probably need to have around 100 sync gameobjects total.
-                var playerName = GetDisplayName(Networking.LocalPlayer);
-                int playerStateCount = playerStates.Length;
-                var end = Mathf.Abs(playerName.GetHashCode()) % playerStateCount;
-
-                Log($"{playerName} doesn't own MatchingTrackerPlayerState, attempt {ownershipAttempts} scanning at {end}," +
-                    $" cooldown {takeOwnershipAttemptCooldown}");
-
-                // first scan if we got ownership from our last attempt
-                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
+                MatchingTrackerPlayerState playerState = playerStates[i];
+                var owner = playerState.GetExplicitOwner();
+                if (owner != null && owner.playerId == localPlayerId)
                 {
-                    MatchingTrackerPlayerState playerState = playerStates[i];
-                    // skip uninitialized states
-                    if (!playerState.IsInitialized()) continue;
-
-                    var owner = playerState.GetExplicitOwner();
-                    if (owner != null && owner.playerId == localPlayerId)
-                    {
-                        Log($"{playerName} found ownership of {playerState.name} after {Time.time - lastTakeOwnershipAttempt} seconds," +
-                            $" setting localPlayerState");
-                        localPlayerState = playerState;
-                        return;
-                    }
+                    Log($"{playerName} found ownership of {playerState.name}" +
+                        $" setting localPlayerState");
+                    localPlayerState = playerState;
+                    return;
                 }
+            }
 
-                // else, scan for an unowned one and attempt.
-                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
+            // else, scan for an unowned one and attempt.
+            for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
+            {
+                MatchingTrackerPlayerState playerState = playerStates[i];
+                var owner = playerState.GetExplicitOwner();
+                if (owner == null)
                 {
-                    MatchingTrackerPlayerState playerState = playerStates[i];
-                    // skip uninitialized states
-                    if (!playerState.IsInitialized()) continue;
-
-                    var owner = playerState.GetExplicitOwner();
-                    if (owner == null)
-                    {
-                        Log($"{playerName} taking ownership {playerState.gameObject.name}, cooldown {takeOwnershipAttemptCooldown}");
-                        playerState.gameObject.SetActive(true);
-                        playerState.TakeExplicitOwnership();
-                        lastTakeOwnershipAttempt = Time.time;
-                        return;
-                    }
+                    Log($"{playerName} taking ownership {playerState.gameObject.name}, cooldown {Time.time - nextOwnershipAttempt}");
+                    playerState.gameObject.SetActive(true);
+                    playerState.TakeExplicitOwnership();
+                    return;
                 }
             }
         }
@@ -402,27 +363,27 @@ public class MatchingTracker : UdonSharpBehaviour
                 // lost ownership somehow
                 Log($"Lost ownership of {localPlayerState.name}, nulling localPlayerState");
                 localPlayerState = null;
+                SendCustomEventDelayedSeconds(nameof(MaintainLocalOwnership), 0.1f);
             }
             else
             {
                 // make sure we don't have ownership of more than one
-                if ((releaseOwnershipAttemptCooldown -= Time.deltaTime) < 0)
+                float delay = UnityEngine.Random.Range(3f, 10f);
+                SendCustomEventDelayedSeconds(nameof(MaintainLocalOwnership), delay);
+                nextReleaseAttempt = Time.time + delay;
+                bool foundOne = false;
+                foreach (var playerState in playerStates)
                 {
-                    releaseOwnershipAttemptCooldown = UnityEngine.Random.Range(1f, 2f);
-                    bool foundOne = false;
-                    foreach (var playerState in playerStates)
+                    var o = playerState.GetExplicitOwner();
+                    if (o != null && o.playerId == localPlayerId)
                     {
-                        var o = playerState.GetExplicitOwner();
-                        if (o != null && o.playerId == localPlayerId)
+                        if (foundOne)
                         {
-                            if (foundOne)
-                            {
-                                Log($"uhoh, found extra owned {playerState.name}, releasing.");
-                                // release explicit ownership
-                                playerState.ownerId = -1;
-                            }
-                            foundOne = true;
+                            Log($"uhoh, found extra owned {playerState.name}, releasing.");
+                            // release explicit ownership
+                            playerState.ownerId = -1;
                         }
+                        foundOne = true;
                     }
                 }
             }
@@ -443,15 +404,12 @@ public class MatchingTracker : UdonSharpBehaviour
         return s;
     }
 
-    // 80 * 10 bits player ids. zeroes at the end will encode to zeros and signal end of list.
-    // need to fit at 100 bytes. 105 bytes * 8 / 7 = 120 chars.
-    private const int maxPacketCharSize = 120;
-    private const int maxDataByteSize = 105;
-    private void BroadcastLocalState()
+    public void BroadcastLocalState()
     {
-        if (localPlayerState == null) return;
-        if ((broadcastCooldown -= Time.deltaTime) > 0) return;
         broadcastCooldown = UnityEngine.Random.Range(1f, 2f);
+        SendCustomEventDelayedSeconds(nameof(BroadcastLocalState), broadcastCooldown);
+
+        if (localPlayerState == null) return;
 
         VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;

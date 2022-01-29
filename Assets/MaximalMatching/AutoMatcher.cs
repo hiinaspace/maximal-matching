@@ -63,8 +63,6 @@ public class AutoMatcher : UdonSharpBehaviour
     // crash watchdog
     public float lastUpdate;
 
-    private float debugStateCooldown = -1;
-
     void Start()
     {
         privateRooms = new Transform[PrivateZoneRoot.transform.childCount];
@@ -81,7 +79,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
     public void SlowUpdate()
     {
-        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1.07f);
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), .99f);
 
         if (Networking.LocalPlayer == null) return;
         lastUpdate = Time.time;
@@ -149,6 +147,8 @@ public class AutoMatcher : UdonSharpBehaviour
         }
     }
 
+    private float lastUiBroadcast = -1;
+
     public void UpdateUi()
     {
         if (Networking.IsMaster) 
@@ -161,12 +161,22 @@ public class AutoMatcher : UdonSharpBehaviour
 
                 MatchingDurationText.text = MatchingDuration > 120 ?
                     $"{Mathf.RoundToInt(MatchingDuration / 30f) / 2f} minutes" :
-                    $"{Mathf.RoundToInt(MatchingDuration)} seconds";
+                    $"{Mathf.Floor(MatchingDuration)} seconds";
+                if ((Time.time - lastUiBroadcast) > 2f)
+                {
+                    lastUiBroadcast = Time.time;
+                    RequestSerialization();
+                }
             }
             if (BreakDurationSlider.value != BreakDuration)
             {
                 BreakDuration = BreakDurationSlider.value;
                 BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
+                if ((Time.time - lastUiBroadcast) > 2f)
+                {
+                    lastUiBroadcast = Time.time;
+                    RequestSerialization();
+                }
             }
         }
         else
@@ -175,8 +185,8 @@ public class AutoMatcher : UdonSharpBehaviour
             {
                 MatchingDurationSlider.value = MatchingDuration;
                 MatchingDurationText.text = MatchingDuration > 120 ?
-                    $"{Mathf.RoundToInt(MatchingDuration / 60f)} minutes" :
-                    $"{Mathf.RoundToInt(MatchingDuration)} seconds";
+                    $"{Mathf.Floor(MatchingDuration / 60f)} minutes" :
+                    $"{Mathf.Floor(MatchingDuration)} seconds";
             }
             if (BreakDuration != BreakDurationSlider.value)
             {
@@ -184,7 +194,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
             }
         }
-        MasterIndicator.text = $"(Only master ${Networking.GetOwner(gameObject).displayName} can change)";
+        MasterIndicator.text = $"(Only master {Networking.GetOwner(gameObject).displayName} can change)";
     }
 
     private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
@@ -198,7 +208,7 @@ public class AutoMatcher : UdonSharpBehaviour
         else
         {
             float seconds = MatchingDuration + BreakDuration - timeSinceLastSeenMatching;
-            float minutes = seconds / 60;
+            float minutes = Mathf.Floor(seconds / 60.0f);
             CountdownText.text =
                 $"Next matching in {minutes:00}:{seconds % 60:00}";
         }
@@ -209,8 +219,6 @@ public class AutoMatcher : UdonSharpBehaviour
         // skip update if debug text is off
         if (!DebugLogText.gameObject.activeInHierarchy) return;
 
-        if ((debugStateCooldown -= Time.deltaTime) > 0) return;
-        debugStateCooldown = 1f;
         var countdown = matchEpoch == 0 ?
             (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
             $"{(MatchingDuration + BreakDuration - timeSinceLastSeenMatching)} seconds";
@@ -220,6 +228,7 @@ public class AutoMatcher : UdonSharpBehaviour
             $"timeSinceLobbyReady={timeSinceLobbyReady} lobbyReady={lobbyReady}\n" +
             $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {MatchingDuration + BreakDuration} since last successful matching)\n" +
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
+            $"lobby.localPlayerOccupying={LobbyZone.localPlayerOccupying}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
 
@@ -353,6 +362,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 PrivateRoomTimer.StartCountdown(MatchingDuration);
                 // teleport timer to location too as visual.
                 PrivateRoomTimer.transform.position = p.transform.position;
+                PrivateRoomTimer.transform.rotation = rotation;
                 return;
             }
         }
@@ -407,7 +417,7 @@ public class AutoMatcher : UdonSharpBehaviour
         int len = matchCount * 2;
         // convert matches from player orderinals to playerIds
         matching = new int[len];
-        for (int i = 0; i < len;)
+        for (int i = 0; i < len; ++i)
         {
             matching[i] = players[eligiblePlayerOrdinals[ordinalMatching[i]]].playerId;
         }
@@ -417,6 +427,9 @@ public class AutoMatcher : UdonSharpBehaviour
         this.matchingServerTimeMillis = Networking.GetServerTimeInMilliseconds();
 
         RequestSerialization();
+
+        // called on master, since OnDeserialization doesn't seem to run for our own set.
+        OnDeserialization();
     }
 
     public
