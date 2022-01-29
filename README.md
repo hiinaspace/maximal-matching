@@ -1,10 +1,6 @@
 # udon maximal matching
 
 rough TODO:
-- fix playerstate contention
-  - quadratically probe a new player state
-  - use the ownership callback to prevent stealing
-  - add a few more (20 more?) gameobjects so 80 players isn't 100% capacity
 - implement new matching variants
   - rapid untracked matching
   - random group match
