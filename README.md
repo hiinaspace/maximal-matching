@@ -2,7 +2,6 @@
 
 rough TODO:
 - modernize:
-    - remove flickering of state gameobjects
   - replace bitpacking with regular arrays
 - add master settings UI
   - make timers configurable with basic UI

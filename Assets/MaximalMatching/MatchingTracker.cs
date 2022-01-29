@@ -25,24 +25,6 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private MatchingTrackerPlayerState localPlayerState = null;
 
-    // If you have more than ~20 gameobjects with UdonBehaviors with synced
-    // variables enabled in the scene, some internal udon networking thing will
-    // near continually spam the console with "Deferred event [number] because
-    // we are over BPS" and "Death run detected, killed [number] events". The
-    // actual synced changes still seem to get through eventually, but the the
-    // log spam is annoying.
-    //
-    // However, if you manually ensure that only ~20 gameobjects with synced
-    // behaviors are active in the scene at a given time by flipping them on
-    // and off, you can still (eventually) sync all the objects, while avoiding
-    // any spam; presumably, the internal udon code only sees the ~20 objects
-    // active, instead of trying to pack everything in the scene into a single
-    // update (and trigger the messages). You can adjust the max enabled down
-    // for higher latency but more overhead for other udon behaviors before the
-    // messages show up.
-    const int MAX_ACTIVE_GAMEOBJECTS = 10;
-    private int enabledCursor = 0;
-
     // since udon has no easy per-player arbitrary synced state,
     // each player needs to own a MatchingTrackerPlayerState gameobject.
     // MaintainLocalOwnership uses exponential backoff to try to avoid contention;
@@ -288,7 +270,6 @@ public class MatchingTracker : UdonSharpBehaviour
         lastUpdate = Time.time;
         if (Networking.LocalPlayer == null) return;
         InitializePlayerStates();
-        JuggleActiveGameobjects();
         MaintainLocalOwnership();
         BroadcastLocalState();
         DebugState();
@@ -662,26 +643,6 @@ public class MatchingTracker : UdonSharpBehaviour
             }
             players[j + 1] = p;
         }
-    }
-
-    private void JuggleActiveGameobjects()
-    {
-        // just rotate one per frame.
-        // I'm hoping that there's enough frame jitter that we don't get into a state where
-        // two players will never have the same set of gameobjects active at the same time, thus
-        // some states never sync. If that's the case will need to randomize more.
-
-        // since the "death run" problem only occurs on owned gameobjects, keep any
-        // remotely-owned gameobjects alive as well; if we become master and a bunch of gameobjects
-        // get dumped on us, we'll hopefully disable them pretty quick.
-        // also keep the local player state enabled locally, so we can push updates to it.
-        var toDisable = playerStates[enabledCursor];
-        if (toDisable != localPlayerState && Networking.IsOwner(toDisable.gameObject))
-        {
-            toDisable.gameObject.SetActive(false);
-        }
-        playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length].gameObject.SetActive(true);
-        enabledCursor = (enabledCursor + 1) % playerStates.Length;
     }
 
     public 
