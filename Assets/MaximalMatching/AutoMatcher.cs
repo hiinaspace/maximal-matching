@@ -70,10 +70,13 @@ public class AutoMatcher : UdonSharpBehaviour
 
         }
         Log($"Start AutoMatcher");
+        SlowUpdate();
     }
 
-    private void Update()
+    public void SlowUpdate()
     {
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1.07f);
+
         if (Networking.LocalPlayer == null) return;
         lastUpdate = Time.time;
 

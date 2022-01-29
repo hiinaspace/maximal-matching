@@ -13,8 +13,15 @@ public class CrashWatchdog : UdonSharpBehaviour
     public AutoMatcher AutoMatcher;
     public MatchingTracker MatchingTracker;
 
-    void Update()
+    void Start()
     {
+        SlowUpdate();
+    }
+
+    public void SlowUpdate()
+    {
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 5.01f);
+
         visualOnCrash.SetActive(Time.time - AutoMatcher.lastUpdate > 5 || Time.time - MatchingTracker.lastUpdate > 5);
     }
 }

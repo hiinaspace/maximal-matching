@@ -69,6 +69,8 @@ public class MatchingTracker : UdonSharpBehaviour
         // instnace). XXX the playercount might not actually be initialized yet in
         // start(); it'll still be fine if it isn't though.
         takeOwnershipAttemptCooldown = VRCPlayerApi.GetPlayerCount() / 4f;
+
+        SlowUpdate();
     }
 
     public string GetDisplayName(VRCPlayerApi player)
@@ -280,8 +282,9 @@ public class MatchingTracker : UdonSharpBehaviour
         }
     }
 
-    private void Update()
+    public void SlowUpdate()
     {
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1);
         lastUpdate = Time.time;
         if (Networking.LocalPlayer == null) return;
         InitializePlayerStates();

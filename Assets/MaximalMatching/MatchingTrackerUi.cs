@@ -30,6 +30,8 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         texts = ToggleRoot.GetComponentsInChildren<UnityEngine.UI.Text>(includeInactive: true);
         pickup = (VRC_Pickup)GetComponent(typeof(VRC_Pickup));
         collider = GetComponent<BoxCollider>();
+
+        UpdateCanvas();
     }
 
     public override void OnDrop()
@@ -81,16 +83,9 @@ public class MatchingTrackerUi : UdonSharpBehaviour
             }
         }
     }
-
-    private void Update()
+    public void UpdateCanvas()
     {
-        UpdateCanvas();
-    }
-
-    private void UpdateCanvas()
-    {
-        if ((updateCooldown -= Time.deltaTime) > 0) return;
-        updateCooldown = 1f;
+        SendCustomEventDelayedSeconds(nameof(UpdateCanvas), 1.03f);
 
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         var playerCount = players.Length;

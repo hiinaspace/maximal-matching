@@ -28,6 +28,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
         {
             teleportPoints[i++] = point;
         }
+        SlowUpdate();
     }
 
     public void StartCountdown(float countdownSecs)
@@ -35,8 +36,9 @@ public class PrivateRoomTimer : UdonSharpBehaviour
         countdown = countdownSecs;
         countdownActive = true;
     }
-    void Update()
+    public void SlowUpdate()
     {
+        SendCustomEventDelayedSeconds(nameof(SlowUpdate), 1.09f);
         if (countdownActive)
         {
             if ((countdown -= Time.deltaTime) < 0)

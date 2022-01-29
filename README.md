@@ -2,7 +2,6 @@
 
 rough TODO:
 - modernize:
-  - replace Update() busy loops with the new udon delay mechanism
   - replace continuous sync with manual requested sync
     - remove flickering of state gameobjects
   - replace bitpacking with regular arrays
