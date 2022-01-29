@@ -7,6 +7,7 @@ using VRC.Udon;
 // player-owned behavior of synced data. Since there are 80 of these,
 // MatchingTracker has to cycle the gameObjects on and off to avoid the Udon
 // death run log spam; thus there's no Update() logic here.
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class MatchingTrackerPlayerState : UdonSharpBehaviour
 {
     // disambiguates implicitly master-owned gameobjects from explicit ownership,

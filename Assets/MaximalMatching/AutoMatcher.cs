@@ -4,6 +4,7 @@ using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
 
+[UdonBehaviourSyncMode(BehaviourSyncMode.Manual)]
 public class AutoMatcher : UdonSharpBehaviour
 {
     public UnityEngine.UI.Text DebugLogText;
@@ -538,6 +539,7 @@ public class AutoMatcher : UdonSharpBehaviour
         var frame = SerializeFrame(buf);
         matchingState0 = new string(frame, 0, maxSyncedStringSize);
         matchingState1 = new string(frame, maxSyncedStringSize, maxSyncedStringSize);
+        RequestSerialization();
     }
 
     public 

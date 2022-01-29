@@ -492,6 +492,7 @@ public class MatchingTracker : UdonSharpBehaviour
         byte[] buf = serializeBytes(matchCount, matchedPlayerIds);
         //Log($"serialized player ids: {System.Convert.ToBase64String(buf)}");
         localPlayerState.matchingState = new string(SerializeFrame(buf));
+        localPlayerState.RequestSerialization();
     }
 
     public 
