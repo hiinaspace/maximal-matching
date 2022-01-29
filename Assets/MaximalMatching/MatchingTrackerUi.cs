@@ -10,7 +10,6 @@ public class MatchingTrackerUi : UdonSharpBehaviour
     public GameObject CanvasRoot;
     public Transform HeadTracker;
     public MatchingTracker MatchingTracker;
-    public UnityEngine.UI.Text title;
 
     private UnityEngine.UI.Toggle[] toggles;
     private bool[] lastSeenToggle;
@@ -60,7 +59,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 {
                     // move the box collider slightly behind the head again for pickup
                     var attachPoint =
-                        HeadTracker.TransformPoint(new Vector3(0, -0.3f, -1f) - collider.center);
+                        HeadTracker.TransformPoint(new Vector3(0, -0.2f, -0.1f) - collider.center);
                     transform.position = attachPoint;
                     // flip backward so grabbing it with your hand over shoulder turns it to the right position
                     transform.rotation = HeadTracker.rotation * Quaternion.AngleAxis(-90, Vector3.right);
@@ -71,7 +70,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         }
         else 
         {
-            pickup.pickupable = false; // disable so they don't see phantom invisible pickup
+            pickup.enabled = false; // disable so they don't see phantom invisible pickup
             if (Input.GetKeyDown(KeyCode.E))
             {
                 // toggle
@@ -90,56 +89,38 @@ public class MatchingTrackerUi : UdonSharpBehaviour
 
     private void UpdateCanvas()
     {
-        if (!MatchingTracker.started) return;
         if ((updateCooldown -= Time.deltaTime) > 0) return;
         updateCooldown = 1f;
 
-        // show indication if player hasn't got ownership yet
-        if (MatchingTracker.localPlayerState == null)
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        var playerCount = players.Length;
+        int i;
+        for (i = 0; i < playerCount; i++)
         {
-            title.text = "Initializing, please wait warmly\n(If this persists, try rejoining.)";
-            return;
-        }
-
-        var matchesRemaining = 0;
-        for (int i = 0; i < 80; i++)
-        {
-            MatchingTrackerPlayerState state = MatchingTracker.playerStates[i];
-            VRCPlayerApi p = state.GetExplicitOwner();
-            if (p == null || Networking.LocalPlayer == p)
+            VRCPlayerApi p = players[i];
+            // skip ourselves
+            if (Networking.LocalPlayer == p)
             {
                 toggles[i].gameObject.SetActive(false);
                 activePlayerLastUpdate[i] = null;
                 continue;
             }
-
             toggles[i].gameObject.SetActive(true);
             var wasMatchedWith = MatchingTracker.GetLocallyMatchedWith(p);
-            var matchedWithUs = state.matchedWithLocalPlayer;
-
             if (wasMatchedWith)
             {
                 texts[i].text = MatchingTracker.GetDisplayName(p);
                 var seconds = Time.time - MatchingTracker.GetLastMatchedWith(p);
                 var minutes = seconds / 60f;
                 var hours = minutes / 60f;
-                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (matched " +
-                    (hours > 1 ? $"{Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes):D2} ago)" :
-                    minutes > 1 ? $"{Mathf.FloorToInt(minutes):##} minutes ago)" :
-                    $"{Mathf.FloorToInt(seconds):##} seconds ago)");
-            }
-            else if (matchedWithUs)
-            {
-                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (matched with you on their end)";
-            }
-            else if (!state.matchingEnabled)
-            {
-                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} (taking a break from matching)";
+                texts[i].text = $"{MatchingTracker.GetDisplayName(p)} " +
+                    (hours > 1 ? $"({Mathf.FloorToInt(hours):D2}:{Mathf.FloorToInt(minutes) % 60:D2} ago)" :
+                    minutes > 1 ? $"({Mathf.FloorToInt(minutes):D2} minutes ago)" :
+                    $"({Mathf.FloorToInt(seconds):D2} seconds ago)");
             }
             else
             {
                 texts[i].text = MatchingTracker.GetDisplayName(p);
-                matchesRemaining++;
             }
             if (activePlayerLastUpdate[i] == MatchingTracker.GetDisplayName(p))
             {
@@ -154,6 +135,7 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                     toggles[i].isOn = wasMatchedWith;
                 }
                 lastSeenToggle[i] = toggles[i].isOn;
+
             }
             else
             {
@@ -164,6 +146,10 @@ public class MatchingTrackerUi : UdonSharpBehaviour
                 lastSeenToggle[i] = wasMatchedWith;
             }
         }
-        title.text = $"Player Checklist ({matchesRemaining} matches remaining)";
+        for (; i < toggles.Length; i++)
+        {
+            toggles[i].gameObject.SetActive(false);
+            activePlayerLastUpdate[i] = null;
+        }
     }
 }

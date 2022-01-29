@@ -10,25 +10,20 @@ public class MatchingTracker : UdonSharpBehaviour
     public UnityEngine.UI.Text DebugLogText;
     public UnityEngine.UI.Text DebugStateText;
     public UnityEngine.UI.Text FullStateDisplay;
-
-    // UI toggle for whether local player wants to be matched
-    public UnityEngine.UI.Toggle MatchingEnabledToggle;
-
     public GameObject PlayerStateRoot;
 
-    public MatchingTrackerPlayerState[] playerStates;
+    private MatchingTrackerPlayerState[] playerStates;
 
     // local hashmap of player to "has been matched with", by hash of the other player's displayName,
     // since the absolute player ids will break after 1024 entries, size to at most 50% load factor.
 
-    public const int LOCAL_STATE_SIZE = 2048;
-
+    const int LOCAL_STATE_SIZE = 2048;
     private string[] localMatchingKey = new string[LOCAL_STATE_SIZE];
     private bool[] localMatchingState = new bool[LOCAL_STATE_SIZE];
     private float[] lastChanged = new float[LOCAL_STATE_SIZE];
     private int localStatePopulation = 0;
 
-    public MatchingTrackerPlayerState localPlayerState = null;
+    private MatchingTrackerPlayerState localPlayerState = null;
 
     // If you have more than ~20 gameobjects with UdonBehaviors with synced
     // variables enabled in the scene, some internal udon networking thing will
@@ -48,7 +43,13 @@ public class MatchingTracker : UdonSharpBehaviour
     const int MAX_ACTIVE_GAMEOBJECTS = 10;
     private int enabledCursor = 0;
 
-    // only attempt to take ownership every few seconds.
+    // since udon has no easy per-player arbitrary synced state,
+    // each player needs to own a MatchingTrackerPlayerState gameobject.
+    // MaintainLocalOwnership uses exponential backoff to try to avoid contention;
+    // experimentally, this worked well up to about a 50% "load factor" of players
+    // to number of MatchingTrackerPlayerState gameobjects. For the max 80 players,
+    // I think you'd probably want at least 100 (0.8 load factor) total
+    private int ownershipAttempts = 0;
     private float takeOwnershipAttemptCooldown = -1;
     private float releaseOwnershipAttemptCooldown = -1;
 
@@ -61,6 +62,13 @@ public class MatchingTracker : UdonSharpBehaviour
         playerStates = PlayerStateRoot.GetComponentsInChildren<MatchingTrackerPlayerState>(includeInactive: true);
         Log($"Start MatchingTracker");
         started = true;
+
+        // the more players in the instnace, the longer it'll take for the
+        // initial sync; save some effort and retries by backing off trying to
+        // take ownership based on player count (20 seconds for a full
+        // instnace). XXX the playercount might not actually be initialized yet in
+        // start(); it'll still be fine if it isn't though.
+        takeOwnershipAttemptCooldown = VRCPlayerApi.GetPlayerCount() / 4f;
     }
 
     public string GetDisplayName(VRCPlayerApi player)
@@ -70,7 +78,9 @@ public class MatchingTracker : UdonSharpBehaviour
             + $"-{player.playerId}"
 #endif
             ;
+
     }
+
 
     public bool GetLocallyMatchedWith(VRCPlayerApi other)
     {
@@ -90,8 +100,6 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             localStatePopulation++;
         }
-        // update our synced array
-        SerializeLocalState();
         Log($"set matched with '{name}' to {wasMatchedWith}, population {localStatePopulation}");
     }
 
@@ -101,8 +109,6 @@ public class MatchingTracker : UdonSharpBehaviour
         localMatchingKey = new string[LOCAL_STATE_SIZE];
         localMatchingState = new bool[LOCAL_STATE_SIZE];
         localStatePopulation = 0;
-        // update our synced array
-        SerializeLocalState();
     }
 
     public
@@ -154,68 +160,104 @@ public class MatchingTracker : UdonSharpBehaviour
         return newKey;
     }
 
-    // called on ui change on the toggle
-    public void UpdateMatchingEnabledToggle()
+    // deserializes all the player matching states into a (flattened) bool array indexable by ordinal.
+    // if AbortOnDesync and any players aren't synced to the current set of players, returns null;
+    // all but the UI display uses that to prevent calculating matchings from desynced states.
+    public bool[] ReadGlobalMatchingState()
     {
-        SerializeLocalState();
-    }
-
-    // deserializes all the player matching states into a (flattened) bool
-    // array, indexable by owner of the player state array, and add all the
-    // matchable (alive and willing) players in the `outPlayers` array.
-    public bool[] ReadGlobalMatchingState(VRCPlayerApi[] outPlayers)
-    {
-        bool[] globalState = new bool[80 * 80];
-
-        // collect ordinals by ids and fill outPlayers
-        // ordinal in the sync object array (and the outPlayers array) by player id
-        var ordinalById = new int[1024];
-        for (int i = 0; i < 80; i++)
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
+        var playerOrdinalsById = new int[1024];
+        for (int i = 0; i < playerCount; i++)
         {
-            var state = playerStates[i];
-            var owner = state.GetExplicitOwner();
-            // only include present players that want to be matched still
-            if (owner != null && state.matchingEnabled)
+            // add 1, so that 0 becomes a sentinel value for 'not here'
+            playerOrdinalsById[players[i].playerId] = i + 1;
+        }
+
+        var len = playerStates.Length;
+        int[] explicitOwnerIds = new int[len];
+        {
+            var i = 0;
+            foreach (var stateObject in playerStates)
             {
-                outPlayers[i] = owner;
-                // add 1, so that 0 becomes a sentinel value for 'not here'
-                ordinalById[owner.playerId] = i + 1;
-            }
-            else
-            {
-                // XXX mark their row as matched by everyone to avoid matching
-                // on this ordinal. messy I know.
-                for (int j = 0; j < 80; j++)
-                {
-                    globalState[i * 80 + j] = true;
-                }
+                var owner = stateObject.GetExplicitOwner();
+                explicitOwnerIds[i++] = owner == null ? -1 : owner.playerId;
             }
         }
 
-        // now that we know which players are live, fill out the rest of the array
-        for (int i = 0; i < 80; i++)
+        bool[] globalState = new bool[80 * 80];
+        var n = 0;
+        foreach (var player in players)
         {
-            var state = playerStates[i];
-            var matchedIds = state.matchedPlayerIds;
-            var owner = state.GetExplicitOwner();
-            if (owner != null)
+            var pid = player.playerId;
+            // do an N^2 search
+            var sidx = -1;
+            for (int i = 0; i < len; i++)
             {
-                for (int j = 0; j < 80; j++)
+                if (explicitOwnerIds[i] == pid)
                 {
-                    var matched = matchedIds[j];
-                    if (matched == 0) break; // done with this player
-                    var ordinal = ordinalById[matched] - 1;
-                    // if matched player owns a sync object
-                    if (ordinal >= 0)
+                    sidx = i;
+                    break;
+                }
+            }
+            if (sidx == -1)
+            {
+                Log($"player {GetDisplayName(player)} id={pid} doesn't own a sync object yet");
+                // set 'has matched with' to everyone, so they don't get spurious matches while
+                // waiting to take ownership.
+                for (int j = 0; j < playerCount; j++)
+                {
+                    globalState[n * 80 + j] = true;
+                }
+            } else
+            {
+                byte[] playerList = DeserializeFrame(playerStates[sidx].matchingState);
+                int[] matchedPlayers = deserializeBytes(playerList);
+
+                for (int j = 0; j < matchedPlayers.Length; j++)
+                {
+                    var matchedPlayerId = matchedPlayers[j];
+                    // end of the list marker
+                    if (matchedPlayerId == 0) break;
+
+                    var matchedPlayerOrdinal = playerOrdinalsById[matchedPlayerId] - 1;
+                    // if the player is still in the instance
+                    if (matchedPlayerOrdinal >= 0)
                     {
-                        // mark as matched
-                        globalState[i * 80 + ordinal] = true;
+                        globalState[n * 80 + matchedPlayerOrdinal] = true;
                     }
                 }
             }
-        }
 
+            n++;
+        }
         return globalState;
+    }
+
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        int[] deserializeBytes(byte[] bytes)
+    {
+        // 10 bits per player
+        int[] matchedPlayers = new int[80];
+        // deserialize 5 bytes int 4 player ids
+        for (int j = 0, k = 0; k < 80; j += 5, k += 4)
+        {
+            int a = bytes[j];
+            int b = bytes[j+1];
+            int c = bytes[j+2];
+            int d = bytes[j+3];
+            int e = bytes[j+4];
+            matchedPlayers[k] = (a << 2) + ((b >> 6) & 3);
+            matchedPlayers[k + 1] = ((b & 63) << 4) + ((c >> 4) & 15);
+            matchedPlayers[k + 2] = ((c & 15) << 6) + ((d >> 2) & 63);
+            matchedPlayers[k + 3] = ((d & 3) << 8) + e;
+            if (matchedPlayers[k + 3] == 0) break;
+        }
+        //Log($"deserialized matched players: {join(matchedPlayers)}");
+        return matchedPlayers;
     }
 
     private float debugStateCooldown = -1;
@@ -257,15 +299,14 @@ public class MatchingTracker : UdonSharpBehaviour
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
         string s = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} initCheck={lastInitializeCheck}\n" +
-            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown}\n" +
-            $"localPlayerState={(localPlayerState == null ? "null" : localPlayerState.gameObject.name)}\n";
+            $"broadcast={broadcastCooldown} releaseAttempt={releaseOwnershipAttemptCooldown} takeAttempt={takeOwnershipAttemptCooldown} " +
+            $"ownershipAttempts={ownershipAttempts}\nplayerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
             if ((i % 4) == 0) s += "\n";
             MatchingTrackerPlayerState playerState = playerStates[i];
             var o = playerState.GetExplicitOwner();
-            var sinceDeser = Time.time - playerState.lastDeserialization;
-            s += $"[{i}]=[{(o == null ? "" : GetDisplayName(o))}]:{playerState.ownerId}:{sinceDeser:00.} ";
+            s += $"[{i}]=[{(o == null ? "" : GetDisplayName(o))}]:{playerState.ownerId} ";
         }
         s += $"\nlocalPop={localStatePopulation} localPlayerid={Networking.LocalPlayer.playerId}";
         DebugStateText.text = s;
@@ -276,50 +317,37 @@ public class MatchingTracker : UdonSharpBehaviour
 
     private void DisplayFullState()
     {
-        VRCPlayerApi[] players = new VRCPlayerApi[80];
-        var globalState = ReadGlobalMatchingState(players);
+        var globalState = ReadGlobalMatchingState();
 
-        string[] names = new string[80];
+        VRCPlayerApi[] players = GetOrderedPlayers();
+        var playerCount = players.Length;
+        string[] names = new string[playerCount];
         string s = "global matching state\n" +
             "✓ means \"has been matched\" from the row player's local perspective, '.' means \"has not been matched\". \n" +
-            "to be auto-matched, both players need to indicate they haven't been matched before.\n\n";
+            "to be auto-matched, both players must not think they've been matched before.\n\n";
 
-        for (int i = 0; i < 80; i++)
+        for (int i = 0; i < playerCount; i++)
         {
-            if (players[i] != null)
+            names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
+            s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
+            for (int j = 0; j < playerCount; j++)
             {
-                names[i] = GetDisplayName(players[i]).PadRight(15).Substring(0, 15);
-                s += $"{GetDisplayName(players[i]).PadLeft(15).Substring(0, 15)} ";
-                for (int j = 0; j < 80; j++)
-                {
-                    s += i == j ? "\\" : 
-                        (players[j] == null ? " " : (globalState[i * 80 + j] ? "✓" : "."));
-                }
-            }
-            else
-            {
-                s += "                "; // 16 spaces
-                s += "                                                                                "; // 80 spaces
+                s += i == j ? "\\" : globalState[i * 80 + j] ? "✓" : ".";
             }
             s += "\n";
         }
         for (int i = 0; i < 15; i++)
         {
             s += "\n                "; // 16 spaces
-            for (int j = 0; j < 80; j++)
+            for (int j = 0; j < playerCount; j++)
             {
-                if (players[j] == null)
-                {
-                    s += " ";
-                }
-                else
-                {
-                    s += names[j][i];
-                }
+                s += names[j][i];
             }
         }
         FullStateDisplay.text = s;
     }
+
+    private float lastTakeOwnershipAttempt;
 
     // maintain ownership of exactly one of the MatchingTrackerPlayerState gameobjects
     private void MaintainLocalOwnership()
@@ -329,27 +357,55 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             if ((takeOwnershipAttemptCooldown -= Time.deltaTime) < 0)
             {
-                // try again after a bit.
-                takeOwnershipAttemptCooldown = UnityEngine.Random.Range(1f, 2f);
-                Log($"no owned MatchingTrackerPlayerState, scanning for an unowned one");
-                foreach (var playerState in playerStates)
+                // exponentially backoff the next attempt to take ownership, capped at 30 seconds.
+                ownershipAttempts++;
+                takeOwnershipAttemptCooldown = 
+                    Mathf.Min(30f, UnityEngine.Random.Range(1f, Mathf.Pow(2, ownershipAttempts)));
+
+                // start scanning at a hash of our display name to distribute players across the sync objects,
+                // with linear probing on collision.
+                // note that there will still be contention as the loading factor (number of players vs
+                // total number of sync objects) increases. For an 80 person instance to actually converge,
+                // you'll probably need to have around 100 sync gameobjects total.
+                var playerName = GetDisplayName(Networking.LocalPlayer);
+                int playerStateCount = playerStates.Length;
+                var end = Mathf.Abs(playerName.GetHashCode()) % playerStateCount;
+
+                Log($"{playerName} doesn't own MatchingTrackerPlayerState, attempt {ownershipAttempts} scanning at {end}," +
+                    $" cooldown {takeOwnershipAttemptCooldown}");
+
+                // first scan if we got ownership from our last attempt
+                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
                 {
+                    MatchingTrackerPlayerState playerState = playerStates[i];
+                    // skip uninitialized states
+                    if (!playerState.IsInitialized()) continue;
+
+                    var owner = playerState.GetExplicitOwner();
+                    if (owner != null && owner.playerId == localPlayerId)
+                    {
+                        Log($"{playerName} found ownership of {playerState.name} after {Time.time - lastTakeOwnershipAttempt} seconds," +
+                            $" setting localPlayerState");
+                        localPlayerState = playerState;
+                        return;
+                    }
+                }
+
+                // else, scan for an unowned one and attempt.
+                for (int i = (end + 1) % playerStateCount; i != end; i = (i + 1) % playerStateCount)
+                {
+                    MatchingTrackerPlayerState playerState = playerStates[i];
                     // skip uninitialized states
                     if (!playerState.IsInitialized()) continue;
 
                     var owner = playerState.GetExplicitOwner();
                     if (owner == null)
                     {
-                        Log($"taking ownership {playerState.gameObject.name}, cooldown {takeOwnershipAttemptCooldown}");
+                        Log($"{playerName} taking ownership {playerState.gameObject.name}, cooldown {takeOwnershipAttemptCooldown}");
                         playerState.gameObject.SetActive(true);
                         playerState.TakeExplicitOwnership();
-                        break;
-                    }
-                    else if (owner.playerId == localPlayerId)
-                    {
-                        Log($"found ownership of {playerState.name}, setting localPlayerState");
-                        localPlayerState = playerState;
-                        break;
+                        lastTakeOwnershipAttempt = Time.time;
+                        return;
                     }
                 }
             }
@@ -403,20 +459,17 @@ public class MatchingTracker : UdonSharpBehaviour
         return s;
     }
 
-    // do this every so often just in case
+    // 80 * 10 bits player ids. zeroes at the end will encode to zeros and signal end of list.
+    // need to fit at 100 bytes. 105 bytes * 8 / 7 = 120 chars.
+    private const int maxPacketCharSize = 120;
+    private const int maxDataByteSize = 105;
     private void BroadcastLocalState()
     {
         if (localPlayerState == null) return;
         if ((broadcastCooldown -= Time.deltaTime) > 0) return;
-        broadcastCooldown = UnityEngine.Random.Range(3f, 10f);
-        SerializeLocalState();
-    }
+        broadcastCooldown = UnityEngine.Random.Range(1f, 2f);
 
-    // set our local player state object from the hash map and UI
-    private void SerializeLocalState()
-    {
-        var localMatchingEnabled = MatchingEnabledToggle.isOn;
-        VRCPlayerApi[] players = GetActivePlayers();
+        VRCPlayerApi[] players = GetOrderedPlayers();
         var playerCount = players.Length;
 
         int matchCount = 0;
@@ -432,13 +485,125 @@ public class MatchingTracker : UdonSharpBehaviour
                 matchedPlayerIds[matchCount++] = player.playerId;
             }
         }
-        localPlayerState.SerializeLocalState(matchedPlayerIds, matchCount, localMatchingEnabled);
-        Log($"wrote local state to sync object matchedIds={join(matchedPlayerIds)} count={matchCount} matchingEnabled={localMatchingEnabled}");
+        //Log($"matched {matchCount} player ids: {join(matchedPlayerIds)}");
+        byte[] buf = serializeBytes(matchCount, matchedPlayerIds);
+        //Log($"serialized player ids: {System.Convert.ToBase64String(buf)}");
+        localPlayerState.matchingState = new string(SerializeFrame(buf));
     }
 
-    // get players stripped of the weird null players that
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        byte[] serializeBytes(int matchCount, int[] matchedPlayerIds)
+    {
+        byte[] buf = new byte[maxDataByteSize];
+        // serialize 4 10bit player ids into 5 bytes
+        // TODO could go from 7 10bit player ids into 10 chars directly.
+        for (int j = 0, k = 0; j < matchCount; j += 4, k += 5)
+        {
+            int a = matchedPlayerIds[j];
+            int b = matchedPlayerIds[j+1];
+            int c = matchedPlayerIds[j+2];
+            int d = matchedPlayerIds[j+3];
+            // first 8 of 0
+            buf[k] = (byte)((a >> 2) & 255);
+            // last 2 of 0, first 6 of 1
+            buf[k + 1] = (byte)(((a & 3) << 6) + ((b >> 4) & 63));
+            // last 4 of 1, first 4 of 2
+            buf[k + 2] = (byte)(((b & 15) << 4) + ((c >> 6) & 15));
+            // last 6 of 2, first 2 of 3
+            buf[k + 3] = (byte)(((c & 63) << 2) + ((d >> 8) & 3));
+            // last 8 of 3
+            buf[k + 4] = (byte)(d & 255);
+        }
+
+        return buf;
+    }
+
+    // from https://github.com/hiinaspace/just-mahjong/
+
+    public 
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        char[] SerializeFrame(byte[] buf)
+    {
+        var frame = new char[maxPacketCharSize];
+        int n = 0;
+        for (int i = 0; i < maxDataByteSize;)
+        {
+            // pack 7 bytes into 56 bits;
+            ulong pack = buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            pack = (pack << 8) + buf[i++];
+            //DebugLong("packed: ", pack);
+
+            // unpack into 8 7bit asciis
+            frame[n++] = (char)((pack >> 49) & (ulong)127);
+            frame[n++] = (char)((pack >> 42) & (ulong)127);
+            frame[n++] = (char)((pack >> 35) & (ulong)127);
+            frame[n++] = (char)((pack >> 28) & (ulong)127);
+
+            frame[n++] = (char)((pack >> 21) & (ulong)127);
+            frame[n++] = (char)((pack >> 14) & (ulong)127);
+            frame[n++] = (char)((pack >> 7) & (ulong)127);
+            frame[n++] = (char)(pack & (ulong)127);
+            //DebugChars("chars: ", chars, n - 8);
+        }
+        return frame;
+    }
+
+    public
+#if !COMPILER_UDONSHARP
+        static
+#endif
+        byte[] DeserializeFrame(string s)
+    {
+        var packet = new byte[maxDataByteSize];
+        
+        if (s.Length < maxPacketCharSize) return packet;
+
+        var frame = new char[maxPacketCharSize];
+        s.CopyTo(0, frame, 0, maxPacketCharSize);
+
+        int n = 0;
+        for (int i = 0; i < maxDataByteSize;)
+        {
+            //DebugChars("deser: ", chars, n);
+            // pack 8 asciis into 56 bits;
+            ulong pack = frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            pack = (pack << 7) + frame[n++];
+            //DebugLong("unpacked: ", pack);
+
+            // unpack into 7 bytes
+            packet[i++] = (byte)((pack >> 48) & (ulong)255);
+            packet[i++] = (byte)((pack >> 40) & (ulong)255);
+            packet[i++] = (byte)((pack >> 32) & (ulong)255);
+            packet[i++] = (byte)((pack >> 24) & (ulong)255);
+
+            packet[i++] = (byte)((pack >> 16) & (ulong)255);
+            packet[i++] = (byte)((pack >> 8) & (ulong)255);
+            packet[i++] = (byte)((pack >> 0) & (ulong)255);
+        }
+        return packet;
+    }
+   
+    // get players ordered by playerId, and stripped of the weird null players that
     // apparently occur sometimes.
-    public VRCPlayerApi[] GetActivePlayers()
+    public VRCPlayerApi[] GetOrderedPlayers()
     {
         var playerCount = VRCPlayerApi.GetPlayerCount();
         VRCPlayerApi[] players = new VRCPlayerApi[playerCount];
@@ -459,6 +624,7 @@ public class MatchingTracker : UdonSharpBehaviour
         // if we're good
         if (nonNullCount == playerCount)
         {
+            sort(players, playerCount);
             return players;
         }
 
@@ -471,7 +637,27 @@ public class MatchingTracker : UdonSharpBehaviour
                 ret[n++] = players[i];
             }
         }
+        sort(ret, nonNullCount);
         return ret;
+    }
+
+    private void sort(VRCPlayerApi[] players, int playerCount)
+    {
+        int i, j;
+        VRCPlayerApi p;
+        int key;
+        for (i = 1; i < playerCount; i++)
+        {
+            p = players[i];
+            key = p.playerId;
+            j = i - 1;
+            while (j >= 0 && players[j].playerId > key)
+            {
+                players[j + 1] = players[j];
+                j--;
+            }
+            players[j + 1] = p;
+        }
     }
 
     private void JuggleActiveGameobjects()
@@ -490,15 +676,7 @@ public class MatchingTracker : UdonSharpBehaviour
         {
             toDisable.gameObject.SetActive(false);
         }
-        var toEnable = playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length];
-
-        toEnable.gameObject.SetActive(true);
-        // XXX try to retrigger deserialization; I don't think it fires when it should.
-        if ((Time.time - toEnable.lastDeserialization) > 4)
-        {
-            toEnable.OnDeserialization();
-        }
-
+        playerStates[(enabledCursor + MAX_ACTIVE_GAMEOBJECTS) % playerStates.Length].gameObject.SetActive(true);
         enabledCursor = (enabledCursor + 1) % playerStates.Length;
     }
 

@@ -17,7 +17,6 @@ MonoBehaviour:
   udonAssembly: 
   assemblyError: 
   sourceCsScript: {fileID: 11500000, guid: 930d115e4a1d1844ba2dbbc5397eb9df, type: 3}
-  behaviourSyncMode: 0
   behaviourIDHeapVarName: __refl_const_intnl_udonTypeID
   compileErrors: []
   hasInteractEvent: 0
@@ -44,7 +43,7 @@ MonoBehaviour:
       Data: 
     - Name: 
       Entry: 12
-      Data: 14
+      Data: 13
     - Name: 
       Entry: 7
       Data: 
@@ -296,7 +295,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: title
+      Data: toggles
     - Name: $v
       Entry: 7
       Data: 17|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -308,25 +307,25 @@ MonoBehaviour:
       Data: 19|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UnityEngine.UI.Text, UnityEngine.UI
+      Data: UnityEngine.UI.Toggle[], UnityEngine.UI
     - Name: 
       Entry: 8
       Data: 
     - Name: declarationType
       Entry: 3
-      Data: 1
+      Data: 2
     - Name: syncMode
       Entry: 3
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: UnityEngineUIText
+      Data: UnityEngineUIToggleArray
     - Name: symbolOriginalName
       Entry: 1
-      Data: title
+      Data: toggles
     - Name: symbolUniqueName
       Entry: 1
-      Data: title
+      Data: toggles
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -359,7 +358,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: toggles
+      Data: lastSeenToggle
     - Name: $v
       Entry: 7
       Data: 21|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -371,7 +370,7 @@ MonoBehaviour:
       Data: 23|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UnityEngine.UI.Toggle[], UnityEngine.UI
+      Data: System.Boolean[], mscorlib
     - Name: 
       Entry: 8
       Data: 
@@ -383,13 +382,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: UnityEngineUIToggleArray
+      Data: SystemBooleanArray
     - Name: symbolOriginalName
       Entry: 1
-      Data: toggles
+      Data: lastSeenToggle
     - Name: symbolUniqueName
       Entry: 1
-      Data: toggles
+      Data: lastSeenToggle
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -422,7 +421,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: lastSeenToggle
+      Data: activePlayerLastUpdate
     - Name: $v
       Entry: 7
       Data: 25|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -434,7 +433,7 @@ MonoBehaviour:
       Data: 27|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: System.Boolean[], mscorlib
+      Data: System.String[], mscorlib
     - Name: 
       Entry: 8
       Data: 
@@ -446,13 +445,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: SystemBooleanArray
+      Data: SystemStringArray
     - Name: symbolOriginalName
       Entry: 1
-      Data: lastSeenToggle
+      Data: activePlayerLastUpdate
     - Name: symbolUniqueName
       Entry: 1
-      Data: lastSeenToggle
+      Data: activePlayerLastUpdate
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -485,7 +484,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: activePlayerLastUpdate
+      Data: texts
     - Name: $v
       Entry: 7
       Data: 29|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -497,7 +496,7 @@ MonoBehaviour:
       Data: 31|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: System.String[], mscorlib
+      Data: UnityEngine.UI.Text[], UnityEngine.UI
     - Name: 
       Entry: 8
       Data: 
@@ -509,13 +508,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: SystemStringArray
+      Data: UnityEngineUITextArray
     - Name: symbolOriginalName
       Entry: 1
-      Data: activePlayerLastUpdate
+      Data: texts
     - Name: symbolUniqueName
       Entry: 1
-      Data: activePlayerLastUpdate
+      Data: texts
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -548,7 +547,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: texts
+      Data: pickup
     - Name: $v
       Entry: 7
       Data: 33|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -560,7 +559,7 @@ MonoBehaviour:
       Data: 35|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UnityEngine.UI.Text[], UnityEngine.UI
+      Data: VRC.SDKBase.VRC_Pickup, VRCSDKBase
     - Name: 
       Entry: 8
       Data: 
@@ -572,13 +571,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: UnityEngineUITextArray
+      Data: VRCSDK3ComponentsVRCPickup
     - Name: symbolOriginalName
       Entry: 1
-      Data: texts
+      Data: pickup
     - Name: symbolUniqueName
       Entry: 1
-      Data: texts
+      Data: pickup
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -611,7 +610,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: pickup
+      Data: collider
     - Name: $v
       Entry: 7
       Data: 37|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -623,7 +622,7 @@ MonoBehaviour:
       Data: 39|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: VRC.SDKBase.VRC_Pickup, VRCSDKBase
+      Data: UnityEngine.BoxCollider, UnityEngine.PhysicsModule
     - Name: 
       Entry: 8
       Data: 
@@ -635,13 +634,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: VRCSDK3ComponentsVRCPickup
+      Data: UnityEngineBoxCollider
     - Name: symbolOriginalName
       Entry: 1
-      Data: pickup
+      Data: collider
     - Name: symbolUniqueName
       Entry: 1
-      Data: pickup
+      Data: collider
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -674,7 +673,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: collider
+      Data: lastDrop
     - Name: $v
       Entry: 7
       Data: 41|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -686,7 +685,7 @@ MonoBehaviour:
       Data: 43|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: UnityEngine.BoxCollider, UnityEngine.PhysicsModule
+      Data: System.Single, mscorlib
     - Name: 
       Entry: 8
       Data: 
@@ -698,13 +697,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: UnityEngineBoxCollider
+      Data: SystemSingle
     - Name: symbolOriginalName
       Entry: 1
-      Data: collider
+      Data: lastDrop
     - Name: symbolUniqueName
       Entry: 1
-      Data: collider
+      Data: lastDrop
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -737,7 +736,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: lastDrop
+      Data: lastDropPlayerPosition
     - Name: $v
       Entry: 7
       Data: 45|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -749,7 +748,7 @@ MonoBehaviour:
       Data: 47|System.RuntimeType, mscorlib
     - Name: 
       Entry: 1
-      Data: System.Single, mscorlib
+      Data: UnityEngine.Vector3, UnityEngine.CoreModule
     - Name: 
       Entry: 8
       Data: 
@@ -761,13 +760,13 @@ MonoBehaviour:
       Data: 0
     - Name: symbolResolvedTypeName
       Entry: 1
-      Data: SystemSingle
+      Data: UnityEngineVector3
     - Name: symbolOriginalName
       Entry: 1
-      Data: lastDrop
+      Data: lastDropPlayerPosition
     - Name: symbolUniqueName
       Entry: 1
-      Data: lastDrop
+      Data: lastDropPlayerPosition
     - Name: symbolDefaultValue
       Entry: 6
       Data: 
@@ -800,7 +799,7 @@ MonoBehaviour:
       Data: 
     - Name: $k
       Entry: 1
-      Data: lastDropPlayerPosition
+      Data: updateCooldown
     - Name: $v
       Entry: 7
       Data: 49|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
@@ -808,71 +807,8 @@ MonoBehaviour:
       Entry: 7
       Data: 50|UdonSharp.Compiler.SymbolDefinition, UdonSharp.Editor
     - Name: internalType
-      Entry: 7
-      Data: 51|System.RuntimeType, mscorlib
-    - Name: 
-      Entry: 1
-      Data: UnityEngine.Vector3, UnityEngine.CoreModule
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: declarationType
-      Entry: 3
-      Data: 2
-    - Name: syncMode
-      Entry: 3
-      Data: 0
-    - Name: symbolResolvedTypeName
-      Entry: 1
-      Data: UnityEngineVector3
-    - Name: symbolOriginalName
-      Entry: 1
-      Data: lastDropPlayerPosition
-    - Name: symbolUniqueName
-      Entry: 1
-      Data: lastDropPlayerPosition
-    - Name: symbolDefaultValue
-      Entry: 6
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: fieldAttributes
-      Entry: 7
-      Data: 52|System.Collections.Generic.List`1[[System.Attribute, mscorlib]], mscorlib
-    - Name: 
-      Entry: 12
-      Data: 0
-    - Name: 
-      Entry: 13
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: userBehaviourSource
-      Entry: 6
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 8
-      Data: 
-    - Name: 
-      Entry: 7
-      Data: 
-    - Name: $k
-      Entry: 1
-      Data: updateCooldown
-    - Name: $v
-      Entry: 7
-      Data: 53|UdonSharp.Compiler.FieldDefinition, UdonSharp.Editor
-    - Name: fieldSymbol
-      Entry: 7
-      Data: 54|UdonSharp.Compiler.SymbolDefinition, UdonSharp.Editor
-    - Name: internalType
       Entry: 9
-      Data: 47
+      Data: 43
     - Name: declarationType
       Entry: 3
       Data: 2
@@ -896,7 +832,7 @@ MonoBehaviour:
       Data: 
     - Name: fieldAttributes
       Entry: 7
-      Data: 55|System.Collections.Generic.List`1[[System.Attribute, mscorlib]], mscorlib
+      Data: 51|System.Collections.Generic.List`1[[System.Attribute, mscorlib]], mscorlib
     - Name: 
       Entry: 12
       Data: 0

@@ -10,26 +10,28 @@ public class AutoMatcher : UdonSharpBehaviour
     public UnityEngine.UI.Text DebugStateText;
     public UnityEngine.UI.Text FullStateDisplay;
     public UnityEngine.UI.Text CountdownText;
-    public GameObject StartMatchingButton;
 
     public MatchingTracker MatchingTracker;
+    public OccupantTracker LobbyZone;
     public PrivateRoomTimer PrivateRoomTimer;
     public GameObject PrivateZoneRoot;
 
-    // how long between each matching 
-    public int MatchingDurationSeconds = 30;
+    // how long in the private room until it teleports you back 
+    public float PrivateRoomTime = 15f;
 
-    // if > 0, then players will be teleported out of the matching room into the lobby and have this
-    // long before they'll be teleported back out to a room (if matchable). Sometimes nice to see
-    // everyone else between rounds.
-    public int CooldownBetweenMatchingSeconds = 0;
+    // how long between the end of the private room time and the next matching.
+    // currently needs to be long enough for the players to get teleported back into the lobby
+    // from the private rooms.
+    // TODO could change the eligible players for matching to include those in the private rooms,
+    // thus players in the private rooms will seamlessly get teleported around to the next round.
+    public float BetweenRoundTime = 10f;
 
-    // whether matching is calculation is enabled. instance master toggles this on once.
-    public bool matchingEnabled = false;
+    // time until the first round starts after players initially enter the zone,
+    // so don't have to wait a full round time to start.
+    public float TimeUntilFirstRound = 10f;
 
     // base64 serialized:
-    // 2 byte matching duration in seconds
-    // 4 byte serverTimeMillis of last matching (for checking countdowns)
+    // 4 byte serverTimeMillis for checking for a new matching, and the countdown till a new round
     //     
     // 1 byte number of matches (up to 40)
     // ([2 byte player id] [2 byte player id]) per matching
@@ -37,17 +39,20 @@ public class AutoMatcher : UdonSharpBehaviour
     // since we're only using two bytes, this serialization will break after 65535
     // player enter the same instance. this is probably fine for vrchat.
     //
-    // base64 encoding of 210 chars is only ~157 bytes, and we need 169 bytes, so we
+    // base64 encoding of 210 chars is only ~157 bytes, and we need 165 bytes, so we
     // have to use 7bit char encoding.
     private const int maxSyncedStringSize = 105;
     [UdonSynced] public string matchingState0 = "";
     [UdonSynced] public string matchingState1 = "";
     private string lastSeenState0 = "";
-    private int lastSeenMatchingServerTimeMillis = int.MinValue;
+    private int lastSeenMatchingServerTimeMillis = 0;
     private int[] lastSeenMatching = new int[0];
     private int lastSeenMatchCount = 0;
 
     private Transform[] privateRooms;
+
+    private float lobbyReadyTime;
+    private bool lobbyReady;
 
     // crash watchdog
     public float lastUpdate;
@@ -67,32 +72,55 @@ public class AutoMatcher : UdonSharpBehaviour
         Log($"Start AutoMatcher");
     }
 
-    public void StartMatching()
-    {
-        if (Networking.IsOwner(gameObject))
-        {
-            matchingEnabled = true;
-        }
-    }
-
     private void Update()
     {
         if (Networking.LocalPlayer == null) return;
         lastUpdate = Time.time;
 
-        // for the purposes of this gameobject. Should be the same as Networking.IsMaster, but just in case.
-        bool isMaster = Networking.IsOwner(gameObject);
+        // if we haven't seen a matching yet
+        // count down from the first time there were at least 2 people in the lobby
+        // if we have seen matching, then count down (server time millis) from last seen by round time + between round time.
+        // TODO this is weird and I think I can handle this better, but I'm sleepy. Need to wait less if zero players are matched.
+        var timeSinceLobbyReady = Time.time - lobbyReadyTime;
+        var timeSinceLastSeenMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0f;
 
-        // only show button if necessary
-        StartMatchingButton.SetActive(!matchingEnabled && isMaster);
+        if (LobbyZone.occupancy > 1)
+        {
+            if (lobbyReady)
+            {
+                if (Networking.IsMaster)
+                {
+                    // very first match
+                    if (lastSeenState0 == "" && timeSinceLobbyReady > TimeUntilFirstRound)
+                    {
+                        Log($"initial countdown finished, trying first matching");
+                        WriteMatching(LobbyZone.GetOccupants());
+                    }
+                }
+            }
+            else
+            {
+                lobbyReadyTime = Time.time;
+                lobbyReady = true;
+                Log($"lobby became ready, has >1 players in it at {lobbyReadyTime}");
+            }
+        }
+        else
+        {
+            if (lobbyReady)
+            {
+                Log($"lobby was ready, but players left");
+            }
+            lobbyReady = false;
+        }
 
-        int secondsSinceLastMatching = (Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis) / 1000;
-        // if we're good to match, and time limit is up or we're doing the very first matching
-        if (isMaster && matchingEnabled && 
-            (secondsSinceLastMatching > MatchingDurationSeconds || lastSeenMatchingServerTimeMillis == int.MinValue))
+        // if we have done another matching before, wait the full time for the next round
+        // TODO could somehow detect if everyone has left the private rooms and shorten, since there's
+        // nobody to wait for
+        if (Networking.IsMaster && lastSeenState0 != "" && timeSinceLastSeenMatching > (PrivateRoomTime + BetweenRoundTime))
         {
             Log($"ready for new matching");
-            WriteMatching();
+            WriteMatching(LobbyZone.GetOccupants());
         }
 
         if (matchingState0 != lastSeenState0)
@@ -103,109 +131,102 @@ public class AutoMatcher : UdonSharpBehaviour
             ActOnMatching();
         }
 
-        UpdateCountdownDisplay(secondsSinceLastMatching);
-        DebugState(secondsSinceLastMatching);
+        UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastSeenMatching);
+        DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
     }
 
-    private void UpdateCountdownDisplay(int secondsSinceLastMatching)
+    private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
     {
         if (lastSeenState0 == "")
         {
-            var master = Networking.GetOwner(gameObject);
-            CountdownText.text = $"Waiting for instance master ({(master == null ? "unknown" : master.displayName)}) to start";
+            CountdownText.text = LobbyZone.occupancy > 1 ?
+                $"First matching in {TimeUntilFirstRound - timeSinceLobbyReady:##} seconds" :
+                "Waiting for players in the Matching Room";
         }
         else
         {
-            int seconds = MatchingDurationSeconds - secondsSinceLastMatching;
-            int minutes = seconds / 60;
+            float seconds = PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching;
+            float minutes = seconds / 60;
             CountdownText.text =
-                $"Next matching in {minutes:00}:{seconds:00}";
+                $"Next matching in {minutes:00}:{seconds % 60:00}";
         }
     }
 
-    private void DebugState(int secondsSinceLastMatching)
+    private void DebugState(float timeSinceLobbyReady, double timeSinceLastSeenMatching)
     {
         // skip update if debug text is off
         if (!DebugLogText.gameObject.activeInHierarchy) return;
 
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
-
-        var master = Networking.GetOwner(gameObject);
-
-        int seconds = MatchingDurationSeconds - secondsSinceLastMatching;
-        int minutes = seconds / 60;
         var countdown = lastSeenState0 == "" ?
-            $"Waiting for instance master ({(master == null ? "unknown" : master.displayName)}) to start" :
-            $"Next matching in {minutes:00}:{seconds:00}";
+            (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
+            $"{(PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching)} seconds";
 
         DebugStateText.text = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster}\n" +
-            $"countdown: {countdown}\n" +
-            $"timeSinceLastSeenMatching={secondsSinceLastMatching}\n" +
+            $"countdown to next matching: {countdown}\n" +
+            $"timeSinceLobbyReady={timeSinceLobbyReady} lobbyReady={lobbyReady}\n" +
+            $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {PrivateRoomTime + BetweenRoundTime} since last successful matching)\n" +
+            $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
 
         if (!MatchingTracker.started) return;
+        var count = LobbyZone.occupancy;
+        if (count < 2)
+        {
+            FullStateDisplay.text = "not enough players in lobby.";
+            return;
+        }
 
-        VRCPlayerApi[] players = new VRCPlayerApi[80];
-        var global = MatchingTracker.ReadGlobalMatchingState(players);
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        var playerCount = players.Length;
 
-        int[] playerIdsbyGlobalOrdinal = new int[players.Length];
-        int eligibleCount = 0;
+        var global = MatchingTracker.ReadGlobalMatchingState();
+
+        // TODO optimize
+        var eligiblePlayers = LobbyZone.GetOccupants();
+        int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
+        for (int i = 0; i < eligiblePlayers.Length; i++)
+        {
+            eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
+        }
+        int[] orderedPlayerIds = new int[players.Length];
         for (int i = 0; i < players.Length; i++)
         {
-            if (players[i] != null)
-            {
-                playerIdsbyGlobalOrdinal[i] = players[i].playerId;
-                eligibleCount++;
-            }
+            orderedPlayerIds[i] = players[i].playerId;
         }
 
-        if (eligibleCount < 2)
-        {
-            FullStateDisplay.text = "not enough initialized/matchable players for a matching yet.";
-        }
-
-        var matchingObject = CalculateMatching(playerIdsbyGlobalOrdinal, global, 80);
-        int[] playerIdsByMatchingOrdinal = (int[])matchingObject[0];
+        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
+        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
         bool[] originalUgraph = (bool[])matchingObject[3];
         var s = $"current potential matching:\n";
-        s += $"playerIdsByMatchingOrdinal={join(playerIdsByMatchingOrdinal)}\n";
+        s += $"eligiblePlayerOrdinals={join(eligiblePlayerOrdinals)}\n";
         s += $"matchCount={matchCount}\n";
         s += $"matching={join(matching)}\n";
         s += $"originalUgraph:\n\n";
-        string[] names = new string[80];
+        string[] names = new string[playerCount];
 
-        for (int i = 0; i < eligibleCount; i++)
+        for (int i = 0; i < count; i++)
         {
-            var id = playerIdsByMatchingOrdinal[i];
-            var player = VRCPlayerApi.GetPlayerById(id);
-            // should always be non null
-            if (player != null)
-            {
-                names[i] = player.displayName.PadRight(15).Substring(0, 15);
-                s += $"{player.displayName.PadLeft(15).Substring(0, 15)} ";
-            }
-            else
-            {
-                names[i] = "                "; // 16 spaces
-                s += "                "; // 16 spaces
-            }
+            var ordinal = eligiblePlayerOrdinals[i];
+            names[i] = players[ordinal].displayName.PadRight(15).Substring(0, 15);
+            s += $"{players[ordinal].displayName.PadLeft(15).Substring(0, 15)} ";
 
             for (int j = 0; j < i; j++) s += " ";
 
-            for (int j = i + 1; j < eligibleCount; j++)
+            for (int j = i + 1; j < count; j++)
             {
-                s += originalUgraph[i * eligibleCount + j] ? "O" : ".";
+                s += originalUgraph[i * count + j] ? "O" : ".";
             }
             s += "\n";
         }
         for (int i = 0; i < 15; i++)
         {
             s += "\n                "; // 16 spaces
-            for (int j = 0; j < eligibleCount; j++)
+            for (int j = 0; j < count; j++)
             {
                 s += names[j][i];
             }
@@ -234,13 +255,6 @@ public class AutoMatcher : UdonSharpBehaviour
         byte[] buf = DeserializeFrame(matchingState0, matchingState1);
         if (buf.Length < 5) return;
         int n = 0;
-
-        int newMatchingDuration = 0;
-        newMatchingDuration |= (int)buf[n++] << 8;
-        newMatchingDuration |= (int)buf[n++];
-
-        MatchingDurationSeconds = newMatchingDuration;
-
         int time = 0;
         time |= (int)buf[n++] << 24;
         time |= (int)buf[n++] << 16;
@@ -268,7 +282,9 @@ public class AutoMatcher : UdonSharpBehaviour
         Log($"Deserialized new matching at {lastSeenMatchingServerTimeMillis}, with {matchCount}\n" +
             $"matchings: [{join(matching)}]");
 
-        VRCPlayerApi[] players = MatchingTracker.GetActivePlayers();
+        if (matchCount == 0) return; // nothing to do
+        
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         int myPlayerId = Networking.LocalPlayer.playerId;
 
         for (int i = 0; i < matchCount; i++)
@@ -305,27 +321,14 @@ public class AutoMatcher : UdonSharpBehaviour
                 // avoid lerping (apparently on by default)
                 Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
                     VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-
-                // teleport timer to location as visual
-                if (CooldownBetweenMatchingSeconds > 0)
-                {
-                    // make countdown slightly shorter than round time
-                    PrivateRoomTimer.StartCountdown((float)(MatchingDurationSeconds - CooldownBetweenMatchingSeconds));
-                    PrivateRoomTimer.teleportAtCountdown = true;
-                } else
-                {
-                    // dont' teleport, and just let the code below teleport out once the new mathcing comes.
-                    PrivateRoomTimer.StartCountdown(MatchingDurationSeconds);
-                    PrivateRoomTimer.teleportAtCountdown = false;
-                }
+                PrivateRoomTimer.StartCountdown(PrivateRoomTime);
+                // teleport timer to location too as visual.
                 PrivateRoomTimer.transform.position = p.transform.position;
                 return;
             }
         }
 
-        Log($"Local player id={myPlayerId} was not in the matching, teleporting out if they were in a room previously");
-        // if the player was previously in a room, the privateroomtimer is there with them and will teleport them out.
-        PrivateRoomTimer.TeleportOut();
+        Log($"Local player id={myPlayerId} was not in the matching, oh well");
     }
 
     private 
@@ -346,57 +349,63 @@ public class AutoMatcher : UdonSharpBehaviour
         return s;
     }
 
-    private void WriteMatching()
+    private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
     {
-        VRCPlayerApi[] players = new VRCPlayerApi[80];
-        var global = MatchingTracker.ReadGlobalMatchingState(players);
-
-        // XXX this can have gaps in it since not all players necessarily own a sync object yet
-        int[] playerIdsByGlobalOrdinal = new int[80];
+        var global = MatchingTracker.ReadGlobalMatchingState();
+        // have to get the full player list for ordinals.
+        VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
+        // TODO optimize
+        int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
+        for (int i = 0; i < eligiblePlayers.Length; i++)
+        {
+            eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
+        }
+        int[] orderedPlayerIds = new int[players.Length];
         for (int i = 0; i < players.Length; i++)
         {
-            if (players[i] != null) playerIdsByGlobalOrdinal[i] = players[i].playerId;
+            orderedPlayerIds[i] = players[i].playerId;
         }
 
-        var matchingObject = CalculateMatching(playerIdsByGlobalOrdinal, global, 80);
+        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
 
-        int[] playerIdsByMatchingOrdinal = (int[])matchingObject[0];
+        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
         int[] matching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
         // globalugraph = [3]
         string log = (string)matchingObject[4];
         Log(log);
 
-        SerializeState(playerIdsByMatchingOrdinal, matching, matchCount);
+        SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, players);
     }
 
     public
 #if !COMPILER_UDONSHARP
         static
 #endif
-        object[] CalculateMatching(int[] playerIdsByGlobalOrdinal, bool[] global, int globalDim)
+        object[] CalculateMatching(int[] eligiblePlayerIds, int[] orderedPlayerIds, bool[] global, int globalDim)
     {
         // stick logs in local variable instead of spamming them in the console.
         string[] log = new string[] { "" };
 
-        var eligibleCount = 0;
-        // the matchings returned by this function are indexed into the smaller ugraph array rather than
-        // the full 80x80 array. XXX this is kind of gross, could improve but don't want to change too much.
-        int[] playerIdsByMatchingOrdinal = new int[playerIdsByGlobalOrdinal.Length];
-        // sentinel add one
-        int[] globalOrdinalByMatchingOrdinal = new int[playerIdsByGlobalOrdinal.Length];
-        for (int i = 0; i < playerIdsByGlobalOrdinal.Length; i++)
+        var eligibleCount = eligiblePlayerIds.Length;
+        log[0] += $"{eligibleCount} players eligible for matching. ";
+
+        // N^2 recovery of the ordinals of the eligible players.
+        int[] eligiblePlayerOrdinals = new int[eligibleCount];
+        for (int i = 0; i < eligibleCount; i++)
         {
-            var pid = playerIdsByGlobalOrdinal[i];
-            // only pids above 0 are valid
-            if (pid > 0)
+            var pid = eligiblePlayerIds[i];
+            for (int j = 0; j < orderedPlayerIds.Length; j++)
             {
-                var matchingOrdinal = eligibleCount++;
-                globalOrdinalByMatchingOrdinal[matchingOrdinal] = i;
-                playerIdsByMatchingOrdinal[matchingOrdinal] = pid;
+                if (orderedPlayerIds[j] == pid)
+                {
+                    eligiblePlayerOrdinals[i] = j;
+                    break;
+                }
             }
         }
-        log[0] += $"{eligibleCount} players eligible for matching. ";
+
+        log[0] += $"eligible player ordinals for matching: {join(eligiblePlayerOrdinals)}. ";
 
         // fold the global state as an undirected graph of just the eligible
         // players, i.e. if either player indicates they were matched (by their
@@ -409,19 +418,16 @@ public class AutoMatcher : UdonSharpBehaviour
         var originalUgraph = new bool[eligibleCount * eligibleCount];
         for (int i = 0; i < eligibleCount; i++)
         {
-            // XXX reverse sentinel mapping
-            int p1 = globalOrdinalByMatchingOrdinal[i];
+            int p1 = eligiblePlayerOrdinals[i];
             // only need top triangle of the matrix
             for (int j = i + 1; j < eligibleCount; j++)
             {
-                // XXX reverse sentinel mapping
-                int p2 = globalOrdinalByMatchingOrdinal[j];
+                int p2 = eligiblePlayerOrdinals[j];
                 // small graph is eligible for match
                 ugraph[i * eligibleCount + j] =
                     // if both player says they haven't been matched
                     !global[p1 * globalDim + p2] && !global[p2 * globalDim + p1];
 
-                // for debugging
                 originalUgraph[i * eligibleCount + j] = ugraph[i * eligibleCount + j];
             }
         }
@@ -434,7 +440,7 @@ public class AutoMatcher : UdonSharpBehaviour
         log[0] += ($"calculated {matchCount} matchings: {join(matching)}.");
 
         // such is udon
-        return new object[] { playerIdsByMatchingOrdinal, matching, matchCount, originalUgraph, log[0]};
+        return new object[] { eligiblePlayerOrdinals, matching, matchCount, originalUgraph, log[0]};
     }
 
     // pick a random eligible pair until you can't anymore. not guaranteed to be maximal.
@@ -503,18 +509,13 @@ public class AutoMatcher : UdonSharpBehaviour
         log[0] += ($"found {n} matchable players in {mkugraph(ugraph, count)}");
         return n;
     }
-    private void SerializeState(int[] playerIdsByMatchingOrdinal, int[] matching, int matchCount)
+    private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount,VRCPlayerApi[] players)
     {
         int n = 0;
         byte[] buf = new byte[maxDataByteSize];
-
-        buf[n++] = (byte)((MatchingDurationSeconds >> 8) & 0xFF);
-        buf[n++] = (byte)(MatchingDurationSeconds & 0xFF);
-
         // this is actually some arbitrary value, not even necessarily positive, but it is
         // apparently consistent across the instance.
         var time = Networking.GetServerTimeInMilliseconds();
-
         buf[n++] = (byte)((time >> 24) & 0xFF);
         buf[n++] = (byte)((time >> 16) & 0xFF);
         buf[n++] = (byte)((time >> 8) & 0xFF);
@@ -522,12 +523,12 @@ public class AutoMatcher : UdonSharpBehaviour
         buf[n++] = (byte)matchCount;
         for (int i = 0; i < matchCount; i++)
         {
-            // turn the matches into playerIds. If it can't fit into 16 bits, we crash. oh well.
-            char playerId1 = (char)playerIdsByMatchingOrdinal[matching[i * 2]];
+            // turn the matches into playerIds. If it can't fit into a char, we crash. oh well.
+            char playerId1 = (char)players[eligiblePlayerOrdinals[matching[i * 2]]].playerId;
             buf[n++] = (byte)((playerId1 >> 8) & 0xFF);
             buf[n++] = (byte)(playerId1 & 0xFF);
 
-            char playerId2 = (char)playerIdsByMatchingOrdinal[matching[i * 2 + 1]];
+            char playerId2 = (char)players[eligiblePlayerOrdinals[matching[i * 2 + 1]]].playerId;
             buf[n++] = (byte)((playerId2 >> 8) & 0xFF);
             buf[n++] = (byte)(playerId2 & 0xFF);
         }

@@ -11,13 +11,12 @@ namespace Tests
         [Test]
         public void stringHashMap()
         {
-            int LOCAL_STATE_SIZE = 2048;
             // exercise with random values
             for (int i = 0; i < 100; ++i)
             {
-                string[] keys = new string[LOCAL_STATE_SIZE];
-                bool[] values = new bool[LOCAL_STATE_SIZE];
-                float[] times = new float[LOCAL_STATE_SIZE];
+                string[] keys = new string[320];
+                bool[] values = new bool[320];
+                float[] times = new float[320];
                 var realMap = new Dictionary<string, bool>();
                 for (int j = 0; j < 80; j++)
                 {
@@ -61,16 +60,14 @@ namespace Tests
                 }
 
                 //Debug.Log($"playerIds: {string.Join(",", playerIds)}");
-                var matchingEnabled = UnityEngine.Random.value > 0.5f;
-                var bytes = MatchingTrackerPlayerState.serializeBytes(i, playerIds, matchingEnabled);
-                var frame = MatchingTrackerPlayerState.SerializeFrame(bytes);
-                var deframe = MatchingTrackerPlayerState.DeserializeFrame(new string(frame));
+                var bytes = MatchingTracker.serializeBytes(i, playerIds);
+                var frame = MatchingTracker.SerializeFrame(bytes);
+                var deframe = MatchingTracker.DeserializeFrame(new string(frame));
                 Assert.That(deframe, Is.EqualTo(bytes));
-                int[] deser = new int[80];
-                var deserMatchingEnabled = MatchingTrackerPlayerState.deserializeBytes(deframe, deser);
+                var deser = MatchingTracker.deserializeBytes(deframe);
                 Assert.That(deser, Is.EqualTo(playerIds));
-                Assert.That(deserMatchingEnabled, Is.EqualTo(matchingEnabled));
             }
+
         }
 
 
