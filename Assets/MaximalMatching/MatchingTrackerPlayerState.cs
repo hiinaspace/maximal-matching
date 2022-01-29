@@ -49,6 +49,6 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
         ownerId = player.playerId;
     }
 
-    // base64-encoded list of 10-bit player ids that have been matched with the owner.
-    [UdonSynced] public string matchingState = "";
+    // player ids that have been matched with the owner.
+    [UdonSynced] public int[] matchingState = new int[80];
 }

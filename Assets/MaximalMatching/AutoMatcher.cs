@@ -31,24 +31,23 @@ public class AutoMatcher : UdonSharpBehaviour
     // so don't have to wait a full round time to start.
     public float TimeUntilFirstRound = 10f;
 
-    // base64 serialized:
-    // 4 byte serverTimeMillis for checking for a new matching, and the countdown till a new round
-    //     
-    // 1 byte number of matches (up to 40)
-    // ([2 byte player id] [2 byte player id]) per matching
-    //
-    // since we're only using two bytes, this serialization will break after 65535
-    // player enter the same instance. this is probably fine for vrchat.
-    //
-    // base64 encoding of 210 chars is only ~157 bytes, and we need 165 bytes, so we
-    // have to use 7bit char encoding.
-    private const int maxSyncedStringSize = 105;
-    [UdonSynced] public string matchingState0 = "";
-    [UdonSynced] public string matchingState1 = "";
-    private string lastSeenState0 = "";
-    private int lastSeenMatchingServerTimeMillis = 0;
+    // simple counter so we know when we get an actual new match
+    [UdonSynced]
+    public int matchEpoch;
+    private int lastSeenMatchEpoch;
+
+    [UdonSynced]
+    public int matchCount;
+    // player matchings as a flat int of player ids, i.e. match, idx 0 and 1, 2 and 3, etc.
+    [UdonSynced]
+    public int[] matching;
+    [UdonSynced]
+    public int matchingServerTimeMillis;
+
     private int[] lastSeenMatching = new int[0];
     private int lastSeenMatchCount = 0;
+
+    private int lastSeenMatchingServerTimeMillis = 0;
 
     private Transform[] privateRooms;
 
@@ -95,7 +94,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 if (Networking.IsMaster)
                 {
                     // very first match
-                    if (lastSeenState0 == "" && timeSinceLobbyReady > TimeUntilFirstRound)
+                    if (matchEpoch == 0 && timeSinceLobbyReady > TimeUntilFirstRound)
                     {
                         Log($"initial countdown finished, trying first matching");
                         WriteMatching(LobbyZone.GetOccupants());
@@ -121,27 +120,30 @@ public class AutoMatcher : UdonSharpBehaviour
         // if we have done another matching before, wait the full time for the next round
         // TODO could somehow detect if everyone has left the private rooms and shorten, since there's
         // nobody to wait for
-        if (Networking.IsMaster && lastSeenState0 != "" && timeSinceLastSeenMatching > (PrivateRoomTime + BetweenRoundTime))
+        if (Networking.IsMaster && matchEpoch != 0 && timeSinceLastSeenMatching > (PrivateRoomTime + BetweenRoundTime))
         {
             Log($"ready for new matching");
             WriteMatching(LobbyZone.GetOccupants());
-        }
-
-        if (matchingState0 != lastSeenState0)
-        {
-            // got a new matching
-            // note this also runs on the master on the frame the new matching is written, updating the `seen` variables.
-            lastSeenState0 = matchingState0;
-            ActOnMatching();
         }
 
         UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastSeenMatching);
         DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
     }
 
+    public override void OnDeserialization()
+    {
+        if (matchEpoch != lastSeenMatchEpoch)
+        {
+            // got a new matching
+            // note this also runs on the master on the frame the new matching is written, updating the `seen` variables.
+            lastSeenMatchEpoch = matchEpoch;
+            ActOnMatching();
+        }
+    }
+
     private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
     {
-        if (lastSeenState0 == "")
+        if (matchEpoch == 0)
         {
             CountdownText.text = LobbyZone.occupancy > 1 ?
                 $"First matching in {TimeUntilFirstRound - timeSinceLobbyReady:##} seconds" :
@@ -163,7 +165,7 @@ public class AutoMatcher : UdonSharpBehaviour
 
         if ((debugStateCooldown -= Time.deltaTime) > 0) return;
         debugStateCooldown = 1f;
-        var countdown = lastSeenState0 == "" ?
+        var countdown = matchEpoch == 0 ?
             (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
             $"{(PrivateRoomTime + BetweenRoundTime - timeSinceLastSeenMatching)} seconds";
 
@@ -256,34 +258,11 @@ public class AutoMatcher : UdonSharpBehaviour
 
     private void ActOnMatching()
     {
-        byte[] buf = DeserializeFrame(matchingState0, matchingState1);
-        if (buf.Length < 5) return;
-        int n = 0;
-        int time = 0;
-        time |= (int)buf[n++] << 24;
-        time |= (int)buf[n++] << 16;
-        time |= (int)buf[n++] << 8;
-        time |= (int)buf[n++];
-        lastSeenMatchingServerTimeMillis = time;
-        int matchCount = buf[n++];
+        lastSeenMatchingServerTimeMillis = matchingServerTimeMillis;
         lastSeenMatchCount = matchCount;
-
-        int[] matching = new int[matchCount * 2];
-        for (int i = 0; i < matchCount; i++)
-        {
-            int player1 = 0;
-            player1 |= (int)buf[n++] << 8;
-            player1 |= (int)buf[n++];
-            matching[i * 2] = player1;
-
-            int player2 = 0;
-            player2 |= (int)buf[n++] << 8;
-            player2 |= (int)buf[n++];
-            matching[i * 2 + 1] = player2;
-        }
         lastSeenMatching = matching;
 
-        Log($"Deserialized new matching at {lastSeenMatchingServerTimeMillis}, with {matchCount}\n" +
+        Log($"Deserialized new matching with {matchCount}\n" +
             $"matchings: [{join(matching)}]");
 
         if (matchCount == 0) return; // nothing to do
@@ -373,13 +352,25 @@ public class AutoMatcher : UdonSharpBehaviour
         var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
 
         int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
-        int[] matching = (int[])matchingObject[1];
+        int[] ordinalMatching = (int[])matchingObject[1];
         int matchCount = (int)matchingObject[2];
-        // globalugraph = [3]
         string log = (string)matchingObject[4];
+
         Log(log);
 
-        SerializeMatching(eligiblePlayerOrdinals, matching, matchCount, players);
+        int len = matchCount * 2;
+        // convert matches from player orderinals to playerIds
+        matching = new int[len];
+        for (int i = 0; i < len;)
+        {
+            matching[i] = players[eligiblePlayerOrdinals[ordinalMatching[i]]].playerId;
+        }
+
+        this.matchCount = matchCount;
+        this.matchEpoch++;
+        this.matchingServerTimeMillis = Networking.GetServerTimeInMilliseconds();
+
+        RequestSerialization();
     }
 
     public
@@ -513,34 +504,6 @@ public class AutoMatcher : UdonSharpBehaviour
         log[0] += ($"found {n} matchable players in {mkugraph(ugraph, count)}");
         return n;
     }
-    private void SerializeMatching(int[] eligiblePlayerOrdinals, int[] matching, int matchCount,VRCPlayerApi[] players)
-    {
-        int n = 0;
-        byte[] buf = new byte[maxDataByteSize];
-        // this is actually some arbitrary value, not even necessarily positive, but it is
-        // apparently consistent across the instance.
-        var time = Networking.GetServerTimeInMilliseconds();
-        buf[n++] = (byte)((time >> 24) & 0xFF);
-        buf[n++] = (byte)((time >> 16) & 0xFF);
-        buf[n++] = (byte)((time >> 8) & 0xFF);
-        buf[n++] = (byte)(time & 0xFF);
-        buf[n++] = (byte)matchCount;
-        for (int i = 0; i < matchCount; i++)
-        {
-            // turn the matches into playerIds. If it can't fit into a char, we crash. oh well.
-            char playerId1 = (char)players[eligiblePlayerOrdinals[matching[i * 2]]].playerId;
-            buf[n++] = (byte)((playerId1 >> 8) & 0xFF);
-            buf[n++] = (byte)(playerId1 & 0xFF);
-
-            char playerId2 = (char)players[eligiblePlayerOrdinals[matching[i * 2 + 1]]].playerId;
-            buf[n++] = (byte)((playerId2 >> 8) & 0xFF);
-            buf[n++] = (byte)(playerId2 & 0xFF);
-        }
-        var frame = SerializeFrame(buf);
-        matchingState0 = new string(frame, 0, maxSyncedStringSize);
-        matchingState1 = new string(frame, maxSyncedStringSize, maxSyncedStringSize);
-        RequestSerialization();
-    }
 
     public 
 #if !COMPILER_UDONSHARP
@@ -560,78 +523,5 @@ public class AutoMatcher : UdonSharpBehaviour
             DebugLogText.text += $"{System.DateTime.Now}: {text}\n";
         }
 #endif
-    }
-
-    // from https://github.com/hiinaspace/just-mahjong/
-    private const int maxPacketCharSize = maxSyncedStringSize * 2;
-
-    private char[] SerializeFrame(byte[] buf)
-    {
-        var frame = new char[maxPacketCharSize];
-        int n = 0;
-        for (int i = 0; i < maxDataByteSize;)
-        {
-            // pack 7 bytes into 56 bits;
-            ulong pack = buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            //DebugLong("packed: ", pack);
-
-            // unpack into 8 7bit asciis
-            frame[n++] = (char)((pack >> 49) & (ulong)127);
-            frame[n++] = (char)((pack >> 42) & (ulong)127);
-            frame[n++] = (char)((pack >> 35) & (ulong)127);
-            frame[n++] = (char)((pack >> 28) & (ulong)127);
-
-            frame[n++] = (char)((pack >> 21) & (ulong)127);
-            frame[n++] = (char)((pack >> 14) & (ulong)127);
-            frame[n++] = (char)((pack >> 7) & (ulong)127);
-            frame[n++] = (char)(pack & (ulong)127);
-            //DebugChars("chars: ", chars, n - 8);
-        }
-        return frame;
-    }
-
-    private const int maxDataByteSize = 182;
-
-    private byte[] DeserializeFrame(string s0, string s1)
-    {
-        var frame = new char[maxPacketCharSize];
-        s0.CopyTo(0, frame, 0, maxSyncedStringSize);
-        s1.CopyTo(0, frame, s0.Length, maxSyncedStringSize);
-
-        var packet = new byte[maxDataByteSize];
-        int n = 0;
-        for (int i = 0; i < maxDataByteSize;)
-        {
-            //DebugChars("deser: ", chars, n);
-            // pack 8 asciis into 56 bits;
-            ulong pack = frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            //DebugLong("unpacked: ", pack);
-
-            // unpack into 7 bytes
-            packet[i++] = (byte)((pack >> 48) & (ulong)255);
-            packet[i++] = (byte)((pack >> 40) & (ulong)255);
-            packet[i++] = (byte)((pack >> 32) & (ulong)255);
-            packet[i++] = (byte)((pack >> 24) & (ulong)255);
-
-            packet[i++] = (byte)((pack >> 16) & (ulong)255);
-            packet[i++] = (byte)((pack >> 8) & (ulong)255);
-            packet[i++] = (byte)((pack >> 0) & (ulong)255);
-        }
-        return packet;
     }
 }

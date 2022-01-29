@@ -195,8 +195,7 @@ public class MatchingTracker : UdonSharpBehaviour
                 }
             } else
             {
-                byte[] playerList = DeserializeFrame(playerStates[sidx].matchingState);
-                int[] matchedPlayers = deserializeBytes(playerList);
+                int[] matchedPlayers = playerStates[sidx].matchingState;
 
                 for (int j = 0; j < matchedPlayers.Length; j++)
                 {
@@ -470,122 +469,10 @@ public class MatchingTracker : UdonSharpBehaviour
             }
         }
         //Log($"matched {matchCount} player ids: {join(matchedPlayerIds)}");
-        byte[] buf = serializeBytes(matchCount, matchedPlayerIds);
-        //Log($"serialized player ids: {System.Convert.ToBase64String(buf)}");
-        localPlayerState.matchingState = new string(SerializeFrame(buf));
+        localPlayerState.matchingState = matchedPlayerIds;
         localPlayerState.RequestSerialization();
     }
 
-    public 
-#if !COMPILER_UDONSHARP
-        static
-#endif
-        byte[] serializeBytes(int matchCount, int[] matchedPlayerIds)
-    {
-        byte[] buf = new byte[maxDataByteSize];
-        // serialize 4 10bit player ids into 5 bytes
-        // TODO could go from 7 10bit player ids into 10 chars directly.
-        for (int j = 0, k = 0; j < matchCount; j += 4, k += 5)
-        {
-            int a = matchedPlayerIds[j];
-            int b = matchedPlayerIds[j+1];
-            int c = matchedPlayerIds[j+2];
-            int d = matchedPlayerIds[j+3];
-            // first 8 of 0
-            buf[k] = (byte)((a >> 2) & 255);
-            // last 2 of 0, first 6 of 1
-            buf[k + 1] = (byte)(((a & 3) << 6) + ((b >> 4) & 63));
-            // last 4 of 1, first 4 of 2
-            buf[k + 2] = (byte)(((b & 15) << 4) + ((c >> 6) & 15));
-            // last 6 of 2, first 2 of 3
-            buf[k + 3] = (byte)(((c & 63) << 2) + ((d >> 8) & 3));
-            // last 8 of 3
-            buf[k + 4] = (byte)(d & 255);
-        }
-
-        return buf;
-    }
-
-    // from https://github.com/hiinaspace/just-mahjong/
-
-    public 
-#if !COMPILER_UDONSHARP
-        static
-#endif
-        char[] SerializeFrame(byte[] buf)
-    {
-        var frame = new char[maxPacketCharSize];
-        int n = 0;
-        for (int i = 0; i < maxDataByteSize;)
-        {
-            // pack 7 bytes into 56 bits;
-            ulong pack = buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            pack = (pack << 8) + buf[i++];
-            //DebugLong("packed: ", pack);
-
-            // unpack into 8 7bit asciis
-            frame[n++] = (char)((pack >> 49) & (ulong)127);
-            frame[n++] = (char)((pack >> 42) & (ulong)127);
-            frame[n++] = (char)((pack >> 35) & (ulong)127);
-            frame[n++] = (char)((pack >> 28) & (ulong)127);
-
-            frame[n++] = (char)((pack >> 21) & (ulong)127);
-            frame[n++] = (char)((pack >> 14) & (ulong)127);
-            frame[n++] = (char)((pack >> 7) & (ulong)127);
-            frame[n++] = (char)(pack & (ulong)127);
-            //DebugChars("chars: ", chars, n - 8);
-        }
-        return frame;
-    }
-
-    public
-#if !COMPILER_UDONSHARP
-        static
-#endif
-        byte[] DeserializeFrame(string s)
-    {
-        var packet = new byte[maxDataByteSize];
-        
-        if (s.Length < maxPacketCharSize) return packet;
-
-        var frame = new char[maxPacketCharSize];
-        s.CopyTo(0, frame, 0, maxPacketCharSize);
-
-        int n = 0;
-        for (int i = 0; i < maxDataByteSize;)
-        {
-            //DebugChars("deser: ", chars, n);
-            // pack 8 asciis into 56 bits;
-            ulong pack = frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            pack = (pack << 7) + frame[n++];
-            //DebugLong("unpacked: ", pack);
-
-            // unpack into 7 bytes
-            packet[i++] = (byte)((pack >> 48) & (ulong)255);
-            packet[i++] = (byte)((pack >> 40) & (ulong)255);
-            packet[i++] = (byte)((pack >> 32) & (ulong)255);
-            packet[i++] = (byte)((pack >> 24) & (ulong)255);
-
-            packet[i++] = (byte)((pack >> 16) & (ulong)255);
-            packet[i++] = (byte)((pack >> 8) & (ulong)255);
-            packet[i++] = (byte)((pack >> 0) & (ulong)255);
-        }
-        return packet;
-    }
-   
     // get players ordered by playerId, and stripped of the weird null players that
     // apparently occur sometimes.
     public VRCPlayerApi[] GetOrderedPlayers()
