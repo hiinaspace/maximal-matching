@@ -81,6 +81,10 @@ public class AutoMatcher : UdonSharpBehaviour
     [UdonSynced]
     public int matchingServerTimeMillis;
 
+    // master-shuffled array of room indices so matches don't always go to the first N rooms.
+    [UdonSynced]
+    public int[] roomShuffle;
+
     private int[] lastSeenMatching = new int[0];
     private int lastSeenMatchCount = 0;
 
@@ -307,7 +311,8 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lobby.localPlayerOccupying={LobbyZone.localPlayerOccupying}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
-            $"gameVariant={gameVariant}";
+            $"gameVariant={gameVariant}\n" +
+            $"roomShuffle={join(roomShuffle)}";
 
         if (!MatchingTracker.started) return;
         var count = LobbyZone.occupancy;
@@ -424,7 +429,7 @@ public class AutoMatcher : UdonSharpBehaviour
                     }
                     Log($"Group matching at idx {i} into room {roomIdx}");
 
-                    var p = privateRooms[roomIdx];
+                    var p = privateRooms[roomShuffle[roomIdx]];
 
                     // 2m circle
                     float angle = (2 * Mathf.PI / GroupMatchingSize) * (i % GroupMatchingSize);
@@ -466,8 +471,8 @@ public class AutoMatcher : UdonSharpBehaviour
 
                 // we're matched, teleport to the ith unoccupied room
                 // divided by 2 since there are two people per match
-                Log($"found local player id={myPlayerId} matched with id={other} name={otherPlayer.displayName}, teleporting to room {i}");
-                var p = privateRooms[i];
+                Log($"found local player id={myPlayerId} matched with id={other} name={otherPlayer.displayName}, teleporting to room {roomShuffle[i]}");
+                var p = privateRooms[roomShuffle[i]];
 
                 // record if not in lightning mode
                 if (gameVariant == REGULAR)
@@ -615,6 +620,14 @@ public class AutoMatcher : UdonSharpBehaviour
 
             this.matchCount = matchCount;
         }
+
+        // randomize rooms for everybody
+        roomShuffle = new int[privateRooms.Length];
+        for (int i = 0; i < roomShuffle.Length; i++)
+        {
+            roomShuffle[i] = i;
+        }
+        Utilities.ShuffleArray(roomShuffle);
 
         RequestSerialization();
 
