@@ -4,6 +4,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MatchingTracker : UdonSharpBehaviour
@@ -49,7 +50,7 @@ public class MatchingTracker : UdonSharpBehaviour
         if (Networking.LocalPlayer == null) return;
         // wait a bit for initial sync
         SendCustomEventDelayedSeconds(nameof(MaintainLocalOwnership), 5f);
-        BroadcastLocalState();
+        PeriodicallyBroadcast();
     }
 
     public string GetDisplayName(VRCPlayerApi player)
@@ -82,6 +83,7 @@ public class MatchingTracker : UdonSharpBehaviour
             localStatePopulation++;
         }
         Log($"set matched with '{name}' to {wasMatchedWith}, population {localStatePopulation}");
+        DoBroadcast();
     }
 
     public void ClearLocalMatching()
@@ -90,6 +92,7 @@ public class MatchingTracker : UdonSharpBehaviour
         localMatchingKey = new string[LOCAL_STATE_SIZE];
         localMatchingState = new bool[LOCAL_STATE_SIZE];
         localStatePopulation = 0;
+        DoBroadcast();
     }
 
     public
@@ -257,7 +260,8 @@ public class MatchingTracker : UdonSharpBehaviour
         if (!DebugLogText.gameObject.activeInHierarchy) return;
         string s = $"{System.DateTime.Now} {Time.time} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster} \n" +
             $"broadcast={broadcastCooldown} releaseAttempt={nextReleaseAttempt} takeAttempt={nextOwnershipAttempt} " +
-            $"ownershipAttempts={ownershipAttempts}\nplayerState=";
+            $"ownershipAttempts={ownershipAttempts} Networking.isClogged={Networking.IsClogged}\n" +
+            $"playerState=";
         for (int i = 0; i < playerStates.Length; i++)
         {
             if ((i % 4) == 0) s += "\n";
@@ -404,11 +408,15 @@ public class MatchingTracker : UdonSharpBehaviour
         return s;
     }
 
-    public void BroadcastLocalState()
+    public void PeriodicallyBroadcast()
     {
-        broadcastCooldown = UnityEngine.Random.Range(1f, 2f);
-        SendCustomEventDelayedSeconds(nameof(BroadcastLocalState), broadcastCooldown);
+        broadcastCooldown = UnityEngine.Random.Range(5f, 15f);
+        SendCustomEventDelayedSeconds(nameof(PeriodicallyBroadcast), broadcastCooldown);
+        DoBroadcast();
+    }
 
+    private void DoBroadcast()
+    {
         if (localPlayerState == null) return;
 
         VRCPlayerApi[] players = GetOrderedPlayers();
@@ -510,5 +518,4 @@ public class MatchingTracker : UdonSharpBehaviour
 #endif
         Debug.Log($"[MaximalMatching] [MatchingTracker] {text}");
     }
-
 }

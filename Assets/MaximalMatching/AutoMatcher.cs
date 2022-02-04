@@ -311,7 +311,7 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lobby.localPlayerOccupying={LobbyZone.localPlayerOccupying}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
-            $"gameVariant={gameVariant}\n" +
+            $"gameVariant={gameVariant} Networking.isClogged={Networking.IsClogged}\n" +
             $"roomShuffle={join(roomShuffle)}";
 
         if (!MatchingTracker.started) return;
@@ -786,4 +786,12 @@ public class AutoMatcher : UdonSharpBehaviour
         }
 #endif
     }
+    public override void OnPostSerialization(SerializationResult result)
+    {
+        if (result.success == false)
+        {
+            Log($"serialization failed: {result}");
+        }
+    }
+
 }

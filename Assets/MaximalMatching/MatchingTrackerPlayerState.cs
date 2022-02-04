@@ -3,6 +3,7 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 
 // player-owned behavior of synced data. Since there are 80 of these,
 // MatchingTracker has to cycle the gameObjects on and off to avoid the Udon
@@ -29,4 +30,11 @@ public class MatchingTrackerPlayerState : UdonSharpBehaviour
 
     // player ids that have been matched with the owner.
     [UdonSynced] public int[] matchingState = new int[80];
+    public override void OnPostSerialization(SerializationResult result)
+    {
+        if (result.success == false)
+        {
+            Debug.LogError($"serialization of player state failed: {result}");
+        }
+    }
 }
