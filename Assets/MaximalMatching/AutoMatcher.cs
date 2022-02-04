@@ -18,10 +18,41 @@ public class AutoMatcher : UdonSharpBehaviour
     public UnityEngine.UI.Text BreakDurationText;
     public UnityEngine.UI.Text MasterIndicator;
 
+    public UnityEngine.UI.Toggle VariantToggle;
+
     public MatchingTracker MatchingTracker;
     public OccupantTracker LobbyZone;
     public PrivateRoomTimer PrivateRoomTimer;
     public GameObject PrivateZoneRoot;
+
+    [UdonSynced]
+    public bool variantsEnabled = false;
+
+    // if enabled, variants replace every nth regular round.
+    private const int variantFrequency = 6;
+
+    // for 5x rounds at default 5 minutes. could make adjustable but it's confusing enough as is.
+    private const float LightningMatchingDuration = 60f;
+    // unfortunately still need a bit of time to teleport players back before next matching
+    private const float LightningBreakDuration = 5f;
+
+    private const int GroupMatchingSize = 6;
+
+    // counter for variant round switching (since lighting round needs advance matchEpoch, can't reuse)
+    //  roundEpoch % variantFrequency == 0 detects next variant round.
+    [UdonSynced]
+    public int roundEpoch = 0;
+    private int lastSeenRoundEpoch = 0;
+
+    // matching variant enum, effects how `matching` array is generated and interpreted,
+    // as well as countdown display.
+    private const int REGULAR = 0;
+    private const int LIGHTNING = 1;
+    private const int GROUP = 2;
+    private const int RECESS = 3;
+
+    [UdonSynced]
+    public int gameVariant = REGULAR;
 
     // how long in the private room until it teleports you back 
     [UdonSynced]
@@ -54,6 +85,7 @@ public class AutoMatcher : UdonSharpBehaviour
     private int lastSeenMatchCount = 0;
 
     private int lastSeenMatchingServerTimeMillis = 0;
+    private int lastSeenRoundTime = 0;
 
     private Transform[] privateRooms;
 
@@ -89,7 +121,8 @@ public class AutoMatcher : UdonSharpBehaviour
         // if we have seen matching, then count down (server time millis) from last seen by round time + between round time.
         // TODO this is weird and I think I can handle this better, but I'm sleepy. Need to wait less if zero players are matched.
         var timeSinceLobbyReady = Time.time - lobbyReadyTime;
-        var timeSinceLastSeenMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0f;
+        var timeSinceLastRound = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenRoundTime) / 1000.0f;
+        var timeSinceLastMatching = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenMatchingServerTimeMillis) / 1000.0f;
 
         if (LobbyZone.occupancy > 1)
         {
@@ -101,7 +134,7 @@ public class AutoMatcher : UdonSharpBehaviour
                     if (matchEpoch == 0 && timeSinceLobbyReady > TimeUntilFirstRound)
                     {
                         Log($"initial countdown finished, trying first matching");
-                        WriteMatching(LobbyZone.GetOccupants());
+                        DoMatching(LobbyZone.GetOccupants());
                     }
                 }
             }
@@ -121,19 +154,29 @@ public class AutoMatcher : UdonSharpBehaviour
             lobbyReady = false;
         }
 
-        // if we have done another matching before, wait the full time for the next round
-        // TODO could somehow detect if everyone has left the private rooms and shorten, since there's
-        // nobody to wait for
-        if (Networking.IsMaster && matchEpoch != 0 && timeSinceLastSeenMatching > (MatchingDuration + BreakDuration))
+        if (Networking.IsMaster)
         {
-            Log($"ready for new matching");
-            WriteMatching(LobbyZone.GetOccupants());
+            // if we have done another matching before, wait the full time for the next round
+            if (matchEpoch != 0 && timeSinceLastRound > (MatchingDuration + BreakDuration))
+            {
+                Log($"ready for new matching");
+                DoMatching(LobbyZone.GetOccupants());
+            } else
+            {
+                // for lightning, send a new lightning match without advancing round epoch/countdown
+                if (gameVariant == LIGHTNING && timeSinceLastMatching > (LightningMatchingDuration + LightningBreakDuration))
+                {
+                    Log($"ready for new lightning matching");
+                    DoLightningMatching();
+                }
+            }
         }
+
 
         UpdateUi();
 
-        UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastSeenMatching);
-        DebugState(timeSinceLobbyReady, timeSinceLastSeenMatching);
+        UpdateCountdownDisplay(timeSinceLobbyReady, timeSinceLastRound, timeSinceLastMatching);
+        DebugState(timeSinceLobbyReady, timeSinceLastRound);
     }
 
     public override void OnDeserialization()
@@ -178,6 +221,11 @@ public class AutoMatcher : UdonSharpBehaviour
                     RequestSerialization();
                 }
             }
+            if (variantsEnabled != VariantToggle.enabled)
+            {
+                variantsEnabled = VariantToggle.enabled;
+                RequestSerialization();
+            }
         }
         else
         {
@@ -193,44 +241,73 @@ public class AutoMatcher : UdonSharpBehaviour
                 BreakDurationSlider.value = BreakDuration;
                 BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
             }
+            VariantToggle.enabled = variantsEnabled;
         }
         MasterIndicator.text = $"(Only master {Networking.GetOwner(gameObject).displayName} can change)";
     }
 
-    private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastSeenMatching)
+    private void UpdateCountdownDisplay(float timeSinceLobbyReady, float timeSinceLastRound, float timeSinceLastMatching)
     {
+        string text;
         if (matchEpoch == 0)
         {
-            CountdownText.text = LobbyZone.occupancy > 1 ?
+            text = LobbyZone.occupancy > 1 ?
                 $"First matching in {TimeUntilFirstRound - timeSinceLobbyReady:##} seconds" :
                 "Waiting for players in the Matching Room";
         }
         else
         {
-            float seconds = MatchingDuration + BreakDuration - timeSinceLastSeenMatching;
+            float seconds = MatchingDuration + BreakDuration - timeSinceLastRound;
             float minutes = Mathf.Floor(seconds / 60.0f);
-            CountdownText.text =
-                $"Next matching in {minutes:00}:{seconds % 60:00}";
+
+            if (variantsEnabled)
+            {
+                var roundsTilVariant = variantFrequency - roundEpoch % variantFrequency;
+                var nextVariant = roundEpoch / variantFrequency / 3;
+                var variantName = nextVariant == 0 ? "Lightning Matching" : nextVariant == 1 ? "Group Matching" : "Recess";
+
+                text =
+                    $"Next matching in {minutes:00}:{seconds % 60:00}\n" +
+                    $"({variantName} " + (roundsTilVariant > 1 ? $"in {roundsTilVariant} rounds" : "next round") + ")";
+            }
+            else
+            {
+                if (gameVariant == LIGHTNING)
+                {
+                    float lightningSeconds = LightningMatchingDuration + LightningBreakDuration - timeSinceLastMatching;
+                    float lightningMinutes = Mathf.Floor(lightningSeconds / 60.0f);
+                    text =
+                        $"Lightning Rounds for {minutes:00}:{seconds % 60:00}\n" +
+                        $"(Next match in {lightningMinutes:00}:{lightningSeconds % 60:00})";
+                }
+                else
+                {
+                    text =
+                        $"Next matching in {minutes:00}:{seconds % 60:00}";
+                }
+            }
         }
+        CountdownText.text = text;
     }
 
-    private void DebugState(float timeSinceLobbyReady, double timeSinceLastSeenMatching)
+    private void DebugState(float timeSinceLobbyReady, double timeSinceLastRound)
     {
         // skip update if debug text is off
         if (!DebugLogText.gameObject.activeInHierarchy) return;
 
         var countdown = matchEpoch == 0 ?
             (LobbyZone.occupancy > 1 ? $"{TimeUntilFirstRound - timeSinceLobbyReady} seconds to initial round" : "(need players)") :
-            $"{(MatchingDuration + BreakDuration - timeSinceLastSeenMatching)} seconds";
+            $"{(MatchingDuration + BreakDuration - timeSinceLastRound)} seconds";
 
         DebugStateText.text = $"{System.DateTime.Now} localPid={Networking.LocalPlayer.playerId} master?={Networking.IsMaster}\n" +
             $"countdown to next matching: {countdown}\n" +
             $"timeSinceLobbyReady={timeSinceLobbyReady} lobbyReady={lobbyReady}\n" +
-            $"timeSinceLastSeenMatching={timeSinceLastSeenMatching} (wait {MatchingDuration + BreakDuration} since last successful matching)\n" +
+            $"timeSinceLastRound={timeSinceLastRound} (wait {MatchingDuration + BreakDuration} since last successful matching)\n" +
             $"lobby.occupancy={LobbyZone.occupancy}\n" +
             $"lobby.localPlayerOccupying={LobbyZone.localPlayerOccupying}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
-            $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n";
+            $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
+            $"gameVariant={gameVariant}";
 
         if (!MatchingTracker.started) return;
         var count = LobbyZone.occupancy;
@@ -316,14 +393,56 @@ public class AutoMatcher : UdonSharpBehaviour
         lastSeenMatchingServerTimeMillis = matchingServerTimeMillis;
         lastSeenMatchCount = matchCount;
         lastSeenMatching = matching;
+        // XXX update separate round time if it changed. messy but I'm sleepy
+        if (roundEpoch != lastSeenRoundEpoch)
+        {
+            lastSeenRoundEpoch = roundEpoch;
+            lastSeenRoundTime = matchingServerTimeMillis;
+        }
 
-        Log($"Deserialized new matching with {matchCount}\n" +
+        Log($"Deserialized new matching epoch {matchEpoch} with {matchCount}\n" +
             $"matchings: [{join(matching)}]");
 
         if (matchCount == 0) return; // nothing to do
         
         VRCPlayerApi[] players = MatchingTracker.GetOrderedPlayers();
         int myPlayerId = Networking.LocalPlayer.playerId;
+
+        if (gameVariant == GROUP)
+        {
+            // matching is just a shuffled list of player ids and matchCount is a player count
+            for (int i = 0; i < matchCount; i++)
+            {
+                if (matching[i] == myPlayerId)
+                {
+                    var roomIdx = i / GroupMatchingSize;
+                    // if we're an odd one out 
+                    if (matchCount % GroupMatchingSize == 1 && (i == matchCount - 1))
+                    {
+                        // move to the first room
+                        roomIdx = 0;
+                    }
+                    Log($"Group matching at idx {i} into room {roomIdx}");
+
+                    var p = privateRooms[roomIdx];
+
+                    // 2m circle
+                    float angle = (2 * Mathf.PI / GroupMatchingSize) * (i % GroupMatchingSize);
+                    Vector3 adjust = new Vector3(Mathf.Cos(angle), 0, Mathf.Sin(angle)) * 2;
+                    // look at the center of the room
+                    Quaternion rotation = Quaternion.LookRotation(adjust * -1);
+                    // avoid lerping (apparently on by default)
+                    Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
+                        VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
+                    PrivateRoomTimer.StartCountdown(MatchingDuration);
+                    // teleport timer to location too as visual.
+                    PrivateRoomTimer.transform.position = p.transform.position;
+                    PrivateRoomTimer.transform.rotation = rotation;
+                    return;
+                }
+            }
+            return;
+        }
 
         for (int i = 0; i < matchCount; i++)
         {
@@ -350,8 +469,11 @@ public class AutoMatcher : UdonSharpBehaviour
                 Log($"found local player id={myPlayerId} matched with id={other} name={otherPlayer.displayName}, teleporting to room {i}");
                 var p = privateRooms[i];
 
-                // record
-                MatchingTracker.SetLocallyMatchedWith(otherPlayer, true);
+                // record if not in lightning mode
+                if (gameVariant == REGULAR)
+                {
+                    MatchingTracker.SetLocallyMatchedWith(otherPlayer, true);
+                }
 
                 Vector3 adjust = matching[i * 2] == myPlayerId ? Vector3.forward : Vector3.back;
                 // look at the center of the room
@@ -359,7 +481,17 @@ public class AutoMatcher : UdonSharpBehaviour
                 // avoid lerping (apparently on by default)
                 Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
                     VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-                PrivateRoomTimer.StartCountdown(MatchingDuration);
+
+
+                var timeSinceLastFullRound = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenRoundTime) / 1000f;
+                var timeUntilNextRoundMinusBreak = MatchingDuration - timeSinceLastFullRound;
+                var countdown = gameVariant == LIGHTNING ?
+                    // shorten last lightning round so people aren't stranded in rooms when round rolls over
+                    // XXX very confusing yes, again bad state machine logic for the lightning rounds
+                    Mathf.Min(timeUntilNextRoundMinusBreak, LightningMatchingDuration) :
+                    MatchingDuration;
+
+                PrivateRoomTimer.StartCountdown(countdown);
                 // teleport timer to location too as visual.
                 PrivateRoomTimer.transform.position = p.transform.position;
                 PrivateRoomTimer.transform.rotation = rotation;
@@ -388,7 +520,32 @@ public class AutoMatcher : UdonSharpBehaviour
         return s;
     }
 
-    private void WriteMatching(VRCPlayerApi[] eligiblePlayers)
+    // XXX do just a mid-round lightning matching, without advancing roundEpoch
+    // the state transitions are unfortunately complicated for what this does, could
+    // definitely be done simpler
+    private void DoLightningMatching()
+    {
+        var eligiblePlayers = LobbyZone.GetOccupants();
+        int[] eligiblePlayerIds = new int[eligiblePlayers.Length];
+        for (int i = 0; i < eligiblePlayers.Length; i++)
+        {
+            eligiblePlayerIds[i] = eligiblePlayers[i].playerId;
+        }
+
+        matchEpoch++;
+        matchingServerTimeMillis = Networking.GetServerTimeInMilliseconds();
+        // just shuffle the eligible player ids for random matches
+        // last player will be odd man out
+        Utilities.ShuffleArray(eligiblePlayerIds);
+        matching = eligiblePlayerIds;
+        matchCount = eligiblePlayerIds.Length / 2;
+
+        RequestSerialization();
+        // called on master, since OnDeserialization doesn't seem to run for our own set.
+        OnDeserialization();
+    }
+
+    private void DoMatching(VRCPlayerApi[] eligiblePlayers)
     {
         var global = MatchingTracker.ReadGlobalMatchingState();
         // have to get the full player list for ordinals.
@@ -405,26 +562,59 @@ public class AutoMatcher : UdonSharpBehaviour
             orderedPlayerIds[i] = players[i].playerId;
         }
 
-        var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
+        roundEpoch++;
+        matchEpoch++;
+        matchingServerTimeMillis = Networking.GetServerTimeInMilliseconds();
 
-        int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
-        int[] ordinalMatching = (int[])matchingObject[1];
-        int matchCount = (int)matchingObject[2];
-        string log = (string)matchingObject[4];
-
-        Log(log);
-
-        int len = matchCount * 2;
-        // convert matches from player orderinals to playerIds
-        matching = new int[len];
-        for (int i = 0; i < len; ++i)
+        if (variantsEnabled && (roundEpoch % variantFrequency) == 0)
         {
-            matching[i] = players[eligiblePlayerOrdinals[ordinalMatching[i]]].playerId;
+            gameVariant = 1 + roundEpoch / variantFrequency / 3;
+            Log($"doing variant game {gameVariant}");
+            switch (gameVariant)
+            {
+                case LIGHTNING: 
+                    // just shuffle the eligible player ids for random matches
+                    // last player will be odd man out
+                    Utilities.ShuffleArray(eligiblePlayerIds);
+                    matching = eligiblePlayerIds;
+                    matchCount = eligiblePlayerIds.Length / 2;
+                    break;
+                case GROUP:
+                    // just shuffle the eligible player ids. ActOnMatching interprets appropriately as random rooms
+                    Utilities.ShuffleArray(eligiblePlayerIds);
+                    matching = eligiblePlayerIds;
+                    matchCount = eligiblePlayerIds.Length;
+                    break;
+                case RECESS:
+                    // do nothing, just advance the epochs
+                    matchCount = 0;
+                    matching = new int[0];
+                    break;
+            }
         }
+        else
+        {
+            gameVariant = REGULAR;
 
-        this.matchCount = matchCount;
-        this.matchEpoch++;
-        this.matchingServerTimeMillis = Networking.GetServerTimeInMilliseconds();
+            var matchingObject = CalculateMatching(eligiblePlayerIds, orderedPlayerIds, global, 80);
+
+            int[] eligiblePlayerOrdinals = (int[])matchingObject[0];
+            int[] ordinalMatching = (int[])matchingObject[1];
+            int matchCount = (int)matchingObject[2];
+            string log = (string)matchingObject[4];
+
+            Log(log);
+
+            int len = matchCount * 2;
+            // convert matches from player orderinals to playerIds
+            matching = new int[len];
+            for (int i = 0; i < len; ++i)
+            {
+                matching[i] = players[eligiblePlayerOrdinals[ordinalMatching[i]]].playerId;
+            }
+
+            this.matchCount = matchCount;
+        }
 
         RequestSerialization();
 

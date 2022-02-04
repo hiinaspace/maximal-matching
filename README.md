@@ -1,11 +1,14 @@
 # udon maximal matching
 
 rough TODO:
-- implement new matching variants
-  - rapid untracked matching
-  - random group match
-  - recess
+
+- randomize room selection
 - replace behind-head menu with double-tap joysticks
+  - I don't think you can not have an Update() loop for desktop
+    - so just make a separate desktop listener udon behavior
+  - otherwise listen to udon input events on triggers
+   - if both triggers pressed within N millis, toggle and teleport menu
+
 
 TODO rewrite design doc, it's drifted out of date
 
