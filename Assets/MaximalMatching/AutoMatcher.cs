@@ -226,9 +226,9 @@ public class AutoMatcher : UdonSharpBehaviour
                     RequestSerialization();
                 }
             }
-            if (variantsEnabled != VariantToggle.enabled)
+            if (variantsEnabled != VariantToggle.isOn)
             {
-                variantsEnabled = VariantToggle.enabled;
+                variantsEnabled = VariantToggle.isOn;
                 RequestSerialization();
             }
         }
@@ -246,7 +246,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 BreakDurationSlider.value = BreakDuration;
                 BreakDurationText.text = $"{Mathf.RoundToInt(BreakDuration)} seconds";
             }
-            VariantToggle.enabled = variantsEnabled;
+            VariantToggle.isOn = variantsEnabled;
         }
         MasterIndicator.text = $"(Only master {Networking.GetOwner(gameObject).displayName} can change)";
     }
@@ -268,8 +268,14 @@ public class AutoMatcher : UdonSharpBehaviour
             if (variantsEnabled)
             {
                 var roundsTilVariant = variantFrequency - roundEpoch % variantFrequency;
-                var nextVariant = roundEpoch / variantFrequency / 3;
-                var variantName = nextVariant == 0 ? "Lightning Matching" : nextVariant == 1 ? "Group Matching" : "Recess";
+                // switch between the 3 variants
+                // XXX yes this is very weird
+                // 0-5/6 = 0 % 3 + 1 = 1 lightning
+                // 6-11/6 = 1 % 3 + 1 = 2 group
+                // 13-17/6 = 2 % 3 + 1 = 3 recess
+                // 19-23/6 = 3 % 3 + 1 = 1 lightning
+                var nextVariant = ((roundEpoch / variantFrequency) % 3) + 1;
+                var variantName = nextVariant == 1 ? "Lightning Matching" : nextVariant == 2 ? "Group Matching" : "Recess";
 
                 text =
                     $"Next matching in {minutes:00}:{seconds % 60:00}\n" +
@@ -312,7 +318,8 @@ public class AutoMatcher : UdonSharpBehaviour
             $"lobby.localPlayerOccupying={LobbyZone.localPlayerOccupying}\n" +
             $"lastSeenServerTimeMillis={lastSeenMatchingServerTimeMillis} millisSinceNow={Networking.GetServerTimeInMilliseconds() - lastSeenMatchingServerTimeMillis}\n" +
             $"lastSeenMatchCount={lastSeenMatchCount} lastSeenMatching={join(lastSeenMatching)}\n" +
-            $"gameVariant={gameVariant} Networking.isClogged={Networking.IsClogged}\n" +
+            $"gameVariant={gameVariant} roundEpoch={roundEpoch} matchEpoch={matchEpoch}\n" +
+            $"Networking.isClogged={Networking.IsClogged}\n" +
             $"roomShuffle={join(roomShuffle)}";
 
         if (!MatchingTracker.started) return;
@@ -406,7 +413,7 @@ public class AutoMatcher : UdonSharpBehaviour
             lastSeenRoundTime = matchingServerTimeMillis;
         }
 
-        Log($"Deserialized new matching epoch {matchEpoch} with {matchCount}\n" +
+        Log($"Deserialized new matching epoch {matchEpoch} roundEpoch {roundEpoch} variant {gameVariant} with {matchCount}\n" +
             $"matchings: [{join(matching)}]");
 
         if (matchCount == 0) return; // nothing to do
@@ -443,7 +450,7 @@ public class AutoMatcher : UdonSharpBehaviour
                     PrivateRoomTimer.StartCountdown(MatchingDuration);
                     // teleport timer to location too as visual.
                     PrivateRoomTimer.transform.position = p.transform.position;
-                    PrivateRoomTimer.transform.rotation = rotation;
+                    // don't rotate, so box collider is axially aligned. otherwise you might miss the teleport back
                     return;
                 }
             }
@@ -574,8 +581,13 @@ public class AutoMatcher : UdonSharpBehaviour
 
         if (variantsEnabled && (roundEpoch % variantFrequency) == 0)
         {
-            gameVariant = 1 + roundEpoch / variantFrequency / 3;
-            Log($"doing variant game {gameVariant}");
+            // switch between the 3 variants
+            // 6/6  + 2 % 3 = 0 + 1 = 1 lightning
+            // 12/6 + 2 % 3 = 1 + 1 = 2 group
+            // 18/6 + 2 % 3 = 2 + 1 = 3 recess
+            // 24/6 + 2 % 3 = 0 + 1 = 1 lightning
+            gameVariant = 1 + ((roundEpoch / variantFrequency + 2) % 3);
+            Log($"doing variant game {gameVariant} for roundEpoch {roundEpoch}");
             switch (gameVariant)
             {
                 case LIGHTNING: 
