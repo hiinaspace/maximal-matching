@@ -2,7 +2,6 @@
 
 rough TODO:
 
-- move teleport off of OnDeserialize
 - replace behind-head menu with double-tap joysticks
   - I don't think you can not have an Update() loop for desktop
     - so just make a separate desktop listener udon behavior

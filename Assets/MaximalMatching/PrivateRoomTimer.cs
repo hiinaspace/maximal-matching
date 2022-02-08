@@ -20,6 +20,9 @@ public class PrivateRoomTimer : UdonSharpBehaviour
     public float countdown;
     public bool countdownActive = false;
 
+    private Vector3 pendingTeleportPoint;
+    private Quaternion pendingTeleportRot;
+
     void Start()
     {
         teleportPoints = new Transform[teleportPointRoot.childCount];
@@ -60,6 +63,23 @@ public class PrivateRoomTimer : UdonSharpBehaviour
         visual.text = countdownActive ? 
             $"{Mathf.FloorToInt(countdown / 60f):00}:{Mathf.FloorToInt(countdown) % 60:00} remaining..." :
             "";
+    }
+
+    // XXX work around https://ask.vrchat.com/t/possible-issue-with-teleportto/8145/3 
+    // apparently teleport screws up if used on same frame as OnDeserialization
+    public void ScheduleTeleport(Vector3 pos, Quaternion rot)
+    {
+        pendingTeleportPoint = pos;
+        pendingTeleportRot = rot;
+        SendCustomEventDelayedFrames(nameof(DoTeleport), 0);
+    }    
+
+    public void DoTeleport()
+    {
+        Networking.LocalPlayer.TeleportTo(
+            pendingTeleportPoint, pendingTeleportRot,
+            VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint,
+            lerpOnRemote: false);
     }
 
     public void TeleportOut()

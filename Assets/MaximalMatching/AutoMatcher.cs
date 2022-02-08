@@ -445,8 +445,7 @@ public class AutoMatcher : UdonSharpBehaviour
                     // look at the center of the room
                     Quaternion rotation = Quaternion.LookRotation(adjust * -1);
                     // avoid lerping (apparently on by default)
-                    Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
-                        VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
+                    PrivateRoomTimer.ScheduleTeleport(adjust + p.transform.position, rotation);
                     PrivateRoomTimer.StartCountdown(MatchingDuration);
                     // teleport timer to location too as visual.
                     PrivateRoomTimer.transform.position = p.transform.position;
@@ -492,9 +491,7 @@ public class AutoMatcher : UdonSharpBehaviour
                 // look at the center of the room
                 Quaternion rotation = Quaternion.LookRotation(adjust * -1);
                 // avoid lerping (apparently on by default)
-                Networking.LocalPlayer.TeleportTo(adjust + p.transform.position, rotation,
-                    VRC_SceneDescriptor.SpawnOrientation.AlignPlayerWithSpawnPoint, lerpOnRemote: false);
-
+                PrivateRoomTimer.ScheduleTeleport(adjust + p.transform.position, rotation);
 
                 var timeSinceLastFullRound = ((float)Networking.GetServerTimeInMilliseconds() - (float)lastSeenRoundTime) / 1000f;
                 var timeUntilNextRoundMinusBreak = MatchingDuration - timeSinceLastFullRound;
