@@ -262,8 +262,8 @@ public class AutoMatcher : UdonSharpBehaviour
         }
         else
         {
-            float seconds = MatchingDuration + BreakDuration - timeSinceLastRound;
-            float minutes = Mathf.Floor(seconds / 60.0f);
+            float seconds = Mathf.Max(0, MatchingDuration + BreakDuration - timeSinceLastRound);
+            int minutes = Mathf.FloorToInt(seconds / 60.0f);
 
             if (variantsEnabled)
             {
@@ -285,8 +285,8 @@ public class AutoMatcher : UdonSharpBehaviour
             {
                 if (gameVariant == LIGHTNING)
                 {
-                    float lightningSeconds = LightningMatchingDuration + LightningBreakDuration - timeSinceLastMatching;
-                    float lightningMinutes = Mathf.Floor(lightningSeconds / 60.0f);
+                    float lightningSeconds = Mathf.Max(0, LightningMatchingDuration + LightningBreakDuration - timeSinceLastMatching);
+                    int lightningMinutes = Mathf.FloorToInt(lightningSeconds / 60.0f);
                     text =
                         $"Lightning Rounds for {minutes:00}:{seconds % 60:00}\n" +
                         $"(Next match in {lightningMinutes:00}:{lightningSeconds % 60:00})";

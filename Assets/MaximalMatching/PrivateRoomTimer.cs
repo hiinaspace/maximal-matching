@@ -58,7 +58,7 @@ public class PrivateRoomTimer : UdonSharpBehaviour
             }
         }
         visual.text = countdownActive ? 
-            $"{Mathf.RoundToInt(countdown / 60):00}:{Mathf.RoundToInt(Mathf.Repeat(countdown, 60)):00} remaining..." :
+            $"{Mathf.FloorToInt(countdown / 60f):00}:{Mathf.FloorToInt(countdown) % 60:00} remaining..." :
             "";
     }
 
