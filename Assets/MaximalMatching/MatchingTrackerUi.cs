@@ -3,13 +3,14 @@ using UdonSharp;
 using UnityEngine;
 using VRC.SDKBase;
 using VRC.Udon;
+using VRC.Udon.Common;
 
+// least bad player-attached menu. click both triggers in VR, or press E on desktop.
 [UdonBehaviourSyncMode(BehaviourSyncMode.None)]
 public class MatchingTrackerUi : UdonSharpBehaviour
 {
     public GameObject ToggleRoot;
     public GameObject CanvasRoot;
-    public Transform HeadTracker;
     public MatchingTracker MatchingTracker;
 
     private UnityEngine.UI.Toggle[] toggles;
@@ -41,49 +42,50 @@ public class MatchingTrackerUi : UdonSharpBehaviour
         lastDropPlayerPosition = Networking.LocalPlayer.GetPosition();
     }
 
+    private float lastLeftTrigger, lastRightTrigger;
+
+    public override void InputUse(bool triggerDown, UdonInputEventArgs args)
+    {
+        if (!triggerDown) return;
+        if (!Networking.LocalPlayer.IsUserInVR()) return;
+        if (args.handType == HandType.LEFT)
+        {
+            lastLeftTrigger = Time.time;
+        }
+        else
+        {
+            lastRightTrigger = Time.time;
+        }
+        // if both triggers pressed about the same time
+        if (Mathf.Abs(lastLeftTrigger - lastRightTrigger) < 0.1f)
+        {
+            ToggleCanvas();
+        }
+    }
+
+    public void ToggleCanvas()
+    {
+        // put canvas in front of head (need Y offset to center)
+        CanvasRoot.SetActive(!CanvasRoot.activeSelf);
+        pickup.enabled = !pickup.enabled;
+
+        var head = Networking.LocalPlayer.GetTrackingData(VRCPlayerApi.TrackingDataType.Head);
+        // try to center in front of head
+        transform.position = head.position + head.rotation * new Vector3(0, -0.25f, 0.5f);
+        transform.rotation = head.rotation;
+    }
+
+    // XXX can't eliminate update loop entirely for desktop player press E detection
     private void LateUpdate()
     {
         VRCPlayerApi player = Networking.LocalPlayer;
         if (player == null) return;
-        // head-attached pickup
-        if (player.IsUserInVR())
+        if (!player.IsUserInVR() && Input.GetKeyDown(KeyCode.E))
         {
-            // XXX need this because every player is "in desktop mode" for a few frames even if they're in VR.
-            pickup.enabled = true;
-            if (pickup.IsHeld)
-            {
-                CanvasRoot.SetActive(true);
-            }
-            else
-            {
-                var currentPos = Networking.LocalPlayer.GetPosition();
-                // if it's been a while since we dropped it or we moved away from the drop point
-                if ((Time.time - lastDrop) > 3 || Vector3.Distance(lastDropPlayerPosition, currentPos) > 1)
-                {
-                    // move the box collider slightly behind the head again for pickup
-                    var attachPoint =
-                        HeadTracker.TransformPoint(new Vector3(0, -0.2f, -0.1f) - collider.center);
-                    transform.position = attachPoint;
-                    // flip backward so grabbing it with your hand over shoulder turns it to the right position
-                    transform.rotation = HeadTracker.rotation * Quaternion.AngleAxis(-90, Vector3.right);
-                    // invisible canvas
-                    CanvasRoot.SetActive(false);
-                }
-            }
-        }
-        else 
-        {
-            pickup.enabled = false; // disable so they don't see phantom invisible pickup
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                // toggle
-                CanvasRoot.SetActive(!CanvasRoot.activeSelf);
-                // put canvas in front of head (need Y offset to center)
-                transform.position = HeadTracker.TransformPoint(new Vector3(0, -0.75f, 1.5f));
-                transform.rotation = HeadTracker.rotation;
-            }
+            ToggleCanvas();
         }
     }
+
     public void UpdateCanvas()
     {
         SendCustomEventDelayedSeconds(nameof(UpdateCanvas), 1.03f);
